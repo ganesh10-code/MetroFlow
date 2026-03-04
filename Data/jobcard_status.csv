@@ -1,0 +1,41 @@
+Work_Order_ID,TrainSet_ID,Maintenance_Description,Work_Status,Priority_Level
+WO-20250912,TS-07,5000 km minor inspection and lubrication,Completed,Medium
+WO-20250913,TS-12,Pantograph arcing and carbon deposit cleaning,Completed,High
+WO-20250914,TS-09,5000 km minor inspection and lubrication,In Progress,Medium
+WO-20250915,TS-22,HVAC compressor check,Completed,Medium
+WO-20250916,TS-15,Cosmetic scratch on exterior wrap,Completed,Low
+WO-20250917,TS-09,5000 km minor inspection and lubrication,Scheduled,Medium
+WO-20250918,TS-09,Brake pad replacement and calibration,Completed,Medium
+WO-20250919,TS-13,Brake pad replacement and calibration,Completed,Medium
+WO-20250920,TS-11,Non-essential passenger display flickering,Scheduled,Low
+WO-20250921,TS-10,HVAC compressor check,In Progress,Medium
+WO-20250922,TS-05,HVAC compressor check,Completed,Medium
+WO-20250923,TS-08,HVAC compressor check,Completed,Medium
+WO-20250924,TS-08,HVAC compressor check,Scheduled,Medium
+WO-20250925,TS-21,One interior light out in coach C,Scheduled,Low
+WO-20250926,TS-01,Traction motor overheating diagnosis,Open,High
+WO-20250927,TS-18,Cosmetic scratch on exterior wrap,Completed,Low
+WO-20250928,TS-25,5000 km minor inspection and lubrication,Scheduled,Medium
+WO-20250929,TS-04,Non-essential passenger display flickering,In Progress,Low
+WO-20250930,TS-08,Traction motor overheating diagnosis,Completed,High
+WO-20250931,TS-23,HVAC compressor check,Completed,Medium
+WO-20250932,TS-16,Brake pad replacement and calibration,Completed,Medium
+WO-20250933,TS-10,20000 km major bogie overhaul,Scheduled,High
+WO-20250934,TS-19,Brake pad replacement and calibration,Scheduled,Medium
+WO-20250935,TS-12,HVAC compressor check,Scheduled,Medium
+WO-20250936,TS-04,Pantograph arcing and carbon deposit cleaning,Completed,High
+WO-20250937,TS-16,HVAC compressor check,Completed,Medium
+WO-20250938,TS-06,5000 km minor inspection and lubrication,Completed,Medium
+WO-20250939,TS-25,Brake pad replacement and calibration,Completed,Medium
+WO-20250940,TS-15,Pantograph arcing and carbon deposit cleaning,Completed,High
+WO-20250941,TS-21,Cosmetic scratch on exterior wrap,Completed,Low
+WO-20250942,TS-04,Brake pad replacement and calibration,In Progress,Medium
+WO-20250943,TS-15,5000 km minor inspection and lubrication,Completed,Medium
+WO-20250944,TS-06,HVAC compressor check,Completed,Medium
+WO-20250945,TS-22,Brake pad replacement and calibration,Completed,Medium
+WO-20250946,TS-24,5000 km minor inspection and lubrication,Completed,Medium
+WO-20250947,TS-05,Brake pad replacement and calibration,Open,Medium
+WO-20250948,TS-18,5000 km minor inspection and lubrication,Completed,Medium
+WO-20250949,TS-14,20000 km major bogie overhaul,Scheduled,High
+WO-20250950,TS-15,Cosmetic scratch on exterior wrap,Completed,Low
+WO-20250951,TS-14,HVAC compressor check,Completed,Medium

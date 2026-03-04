@@ -1,0 +1,26 @@
+TrainSet_ID,Rolling-Stock_Status,Signalling_Status,Telecom_Status,Highest_Open_Job_Priority,Kilometers_Since_Last_Maintenance,Maintenance_Threshold,Urgency_Level,Penalty_Risk_Level,Days_Since_Last_Clean,Compliance_Status,Track_ID,Position,Estimated_Shunting_Time_Minutes,Rolling-Stock_Expiry,Signalling_Expiry,Telecom_Expiry,Advertiser_Name,Total_Kilometers
+TS-01,Valid,Valid,Valid,High,7649,20000,Low,Low,19,Overdue,STB-B,7,17,2025-10-20,2026-02-24,2025-10-19,Muthoot Finance,55337
+TS-02,Expiring,Valid,Valid,None,708,5000,Low,None,2,Compliant,STB-B,5,11,2025-09-27,2026-02-15,2025-12-19,,40233
+TS-03,Valid,Valid,Valid,None,3758,5000,Medium,Low,5,Compliant,STB-B,4,8,2025-12-09,2026-02-09,2025-11-07,Malayala Manorama,63477
+TS-04,Expired,Valid,Valid,Medium,2900,5000,Low,Low,13,Compliant,STB-A,7,17,2025-09-26,2026-02-17,2025-10-13,Apollo Tyres,54394
+TS-05,Valid,Valid,Valid,Medium,19735,20000,Critical,None,6,Compliant,STB-B,3,5,2025-10-30,2026-01-10,2025-11-09,,52794
+TS-06,Expiring,Valid,Valid,None,7543,20000,Low,None,7,Compliant,STB-B,2,0,2025-10-10,2026-01-15,2025-11-07,,55939
+TS-07,Valid,Valid,Valid,None,16471,20000,Medium,Low,11,Compliant,STB-C,6,14,2025-10-21,2026-02-18,2025-12-23,MyG,45304
+TS-08,Expiring,Valid,Valid,None,880,5000,Low,Low,9,Compliant,STB-C,8,20,2025-09-13,2026-03-02,2025-11-18,MyG,50345
+TS-09,Expiring,Valid,Valid,Medium,120,5000,Low,None,19,Overdue,STB-A,2,0,2025-10-01,2026-03-03,2025-10-21,,62792
+TS-10,Valid,Valid,Valid,Medium,3541,5000,Low,Low,12,Compliant,STB-A,5,11,2025-12-07,2026-03-05,2026-01-06,VKC Pride,53600
+TS-11,Expiring,Valid,Valid,None,3407,5000,Low,Low,18,Overdue,STB-A,4,8,2025-10-09,2026-01-26,2025-10-28,MyG,61012
+TS-12,Valid,Valid,Valid,None,1558,5000,Low,Low,16,Overdue,STB-B,6,14,2025-10-24,2025-12-29,2025-10-15,Malayala Manorama,57984
+TS-13,Expiring,Valid,Valid,None,1748,5000,Low,Low,18,Overdue,STB-A,8,20,2025-10-10,2025-12-16,2025-10-20,Federal Bank,57425
+TS-14,Valid,Valid,Valid,None,2168,5000,Low,Low,5,Compliant,STB-B,9,23,2025-10-19,2026-02-13,2025-11-11,Federal Bank,41715
+TS-15,Valid,Valid,Valid,None,3189,5000,Low,Low,7,Compliant,STB-C,2,0,2025-10-31,2026-02-24,2025-11-06,Muthoot Finance,42394
+TS-16,Expiring,Valid,Valid,None,1057,5000,Low,Low,7,Compliant,STB-C,7,17,2025-10-01,2025-12-13,2026-01-02,VKC Pride,41160
+TS-17,Valid,Valid,Valid,None,1885,5000,Low,Low,18,Overdue,STB-A,6,14,2025-11-30,2025-12-20,2025-12-06,Eastern Condiments,47865
+TS-18,Valid,Valid,Valid,None,3662,5000,Low,Low,19,Overdue,STB-C,5,11,2025-11-08,2026-03-06,2025-11-30,Eastern Condiments,46320
+TS-19,Valid,Valid,Valid,None,2893,5000,Low,Low,5,Compliant,STB-B,8,20,2025-12-04,2025-12-29,2025-12-07,Muthoot Finance,61964
+TS-20,Valid,Valid,Valid,None,5177,5000,Critical,Low,20,Overdue,STB-C,1,0,2025-10-24,2026-01-08,2025-12-04,Federal Bank,60134
+TS-21,Valid,Valid,Valid,None,818,5000,Low,Low,10,Compliant,STB-C,3,5,2025-09-16,2026-02-04,2025-11-24,VKC Pride,40858
+TS-22,Valid,Valid,Valid,None,14197,20000,Low,Low,9,Compliant,STB-B,1,0,2025-12-08,2026-03-06,2025-12-27,Lulu Mall,60830
+TS-23,Valid,Valid,Valid,None,3458,5000,Low,Low,9,Compliant,STB-A,3,5,2025-11-26,2026-01-28,2025-10-25,Federal Bank,42829
+TS-24,Valid,Valid,Valid,None,4130,5000,Medium,Low,4,Compliant,STB-A,1,0,2025-10-20,2026-03-07,2025-12-18,Apollo Tyres,57808
+TS-25,Valid,Valid,Valid,None,18129,20000,High,None,7,Compliant,STB-C,4,8,2025-11-26,2026-02-26,2025-10-31,,48257

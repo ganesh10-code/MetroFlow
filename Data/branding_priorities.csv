@@ -1,0 +1,21 @@
+Contract_ID,TrainSet_ID,Advertiser_Name,Required_Exposure_Hours,Accumulated_Exposure_Hours,Projected_SLA_Compliance_Percentage,Penalty_Risk_Level
+CON-2025-01,TS-13,Federal Bank,181,49.7,131.8,Low
+CON-2025-02,TS-03,Malayala Manorama,220,85.6,112.84,Low
+CON-2025-03,TS-08,MyG,181,83.6,155.88,Low
+CON-2025-04,TS-17,Eastern Condiments,181,81.6,152.15,Low
+CON-2025-05,TS-22,Lulu Mall,203,83.3,127.66,Low
+CON-2025-06,TS-07,MyG,188,77.9,139.85,Low
+CON-2025-07,TS-18,Eastern Condiments,195,76.4,132.23,Low
+CON-2025-08,TS-23,Federal Bank,217,82.4,118.14,Low
+CON-2025-09,TS-11,MyG,197,99.2,146.03,Low
+CON-2025-10,TS-01,Muthoot Finance,215,65.2,112.64,Low
+CON-2025-11,TS-21,VKC Pride,185,87.6,147.32,Low
+CON-2025-12,TS-15,Muthoot Finance,207,71.4,116.41,Low
+CON-2025-13,TS-14,Federal Bank,191,60.7,132.42,Low
+CON-2025-14,TS-04,Apollo Tyres,213,77.7,113.49,Low
+CON-2025-15,TS-20,Federal Bank,204,72.5,132.0,Low
+CON-2025-16,TS-24,Apollo Tyres,220,88.9,117.19,Low
+CON-2025-17,TS-16,VKC Pride,215,107.3,136.11,Low
+CON-2025-18,TS-19,Muthoot Finance,182,83.5,154.84,Low
+CON-2025-19,TS-10,VKC Pride,220,68.8,105.55,Low
+CON-2025-20,TS-12,Malayala Manorama,209,88.8,132.19,Low
