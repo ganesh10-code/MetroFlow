@@ -1,4 +1,4 @@
-Work_Order_ID,TrainSet_ID,Maintenance_Description,Work_Status,Priority_Level
+Work_Order_ID,Train_ID,Maintenance_Description,Work_Status,Priority_Level
 WO-20250912,TS-07,5000 km minor inspection and lubrication,Completed,Medium
 WO-20250913,TS-12,Pantograph arcing and carbon deposit cleaning,Completed,High
 WO-20250914,TS-09,5000 km minor inspection and lubrication,In Progress,Medium

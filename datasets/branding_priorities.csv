@@ -1,4 +1,4 @@
-Contract_ID,TrainSet_ID,Advertiser_Name,Required_Exposure_Hours,Accumulated_Exposure_Hours,Projected_SLA_Compliance_Percentage,Penalty_Risk_Level
+Contract_ID,Train_ID,Advertiser_Name,Required_Exposure_Hours,Accumulated_Exposure_Hours,Projected_SLA_Compliance_Percentage,Penalty_Risk_Level
 CON-2025-01,TS-13,Federal Bank,181,49.7,131.8,Low
 CON-2025-02,TS-03,Malayala Manorama,220,85.6,112.84,Low
 CON-2025-03,TS-08,MyG,181,83.6,155.88,Low

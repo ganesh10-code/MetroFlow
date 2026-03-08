@@ -1,4 +1,4 @@
-TrainSet_ID,Track_ID,Position,Shunting_Required,Estimated_Shunting_Time_Minutes,Accessibility_Score
+Train_ID,Track_ID,Position,Shunting_Required,Estimated_Shunting_Time_Minutes,Accessibility_Score
 TS-24,STB-A,1,No,0,100
 TS-09,STB-A,2,No,0,100
 TS-23,STB-A,3,Yes,5,85
