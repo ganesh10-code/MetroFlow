@@ -1,4 +1,44 @@
-# METROFLOW [ AI-Driven Train Induction Planning System ]
+# METROFLOW [# AI-Based Train Induction Planning System
+
+## Phase 1: Application Layer Complete
+
+**Note from Development Phase 1:**
+The core application framework has been built. The UI, authentication, role-based access, and APIs are ready. 
+_The ML Optimizer and real AI models are placeholders currently living in `backend/app/services/core_adapter.py` and `genai_adapter.py`. Generating the plan is completely decoupled so Ganesh can simply plug in the ML Core algorithm during Phase 2 without rewriting the application._
+
+---
+
+## 🚀 Run Instructions
+
+### 1. Database Setup
+Make sure PostgreSQL is running, and `.env` has your `DATABASE_URL` set.
+Seed the initial database models and users:
+```bash
+python scripts/seed_data.py
+```
+*Note: This generates default users like `admin`, `planner`, `maintenance`, `fitness`, `branding`, all with password `password123`.*
+
+### 2. Run Backend
+Start the FastAPI server (from the `backend` directory):
+```bash
+cd backend
+uvicorn app.main:app --reload --port 8000
+```
+Swagger UI is available at `http://localhost:8000/docs`.
+
+### 3. Run Frontend
+Start the React + Vite frontend (from the `frontend` directory):
+```bash
+cd frontend
+npm run dev
+```
+The App will be available at `http://localhost:5173`.
+
+
+### 🚦 Next Steps for Ganesh (Phase 2):
+1. **Core Adapter**: Provide real implementations in `backend/app/services/core_adapter.py` for generating optimization plans.
+2. **GenAI Adapter**: Integrate LLM calls in `backend/app/services/genai_adapter.py` for real-time natural language explanations of the ML plans and chat functionalities.
+3. Test locally with the new models! ]
 
 ## 📌 Overview
 
