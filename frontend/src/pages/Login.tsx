@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../config/axios';
 import { AuthContext } from '../context/AuthContext';
+import { jwtDecode } from 'jwt-decode';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -23,8 +24,15 @@ const Login = () => {
       
       login(res.data.access_token);
       
-      // Navigate based on role (which is now in auth context via token decoding, but we don't have it sync yet. We'll let layout handle it or just send to default)
-      navigate('/');
+      const decoded: any = jwtDecode(res.data.access_token);
+      const role = decoded.role;
+      
+      if (role === 'ADMIN') navigate('/');
+      else if (role === 'PLANNER') navigate('/planner');
+      else if (role === 'MAINTENANCE') navigate('/maintenance');
+      else if (role === 'FITNESS') navigate('/fitness');
+      else if (role === 'BRANDING') navigate('/branding');
+      else navigate('/');
     } catch (err) {
       setError('Invalid credentials');
     }

@@ -18,7 +18,8 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
     return <Navigate to="/login" replace />;
   }
 
-  if (!allowedRoles.includes(user.role) && !allowedRoles.includes('ADMIN')) {
+  // Admins can access everything. Other roles must match allowedRoles.
+  if (!allowedRoles.includes(user.role) && user.role !== 'ADMIN') {
     return <Navigate to="/unauthorized" replace />;
   }
 
