@@ -18,4 +18,18 @@ api.interceptors.request.use(
   }
 );
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 || error.response?.status === 403 || error.response?.data?.detail === 'Inactive user') {
+      localStorage.removeItem('token');
+      // We don't want to infinite redirect, avoid full reload on login itself unless necessary
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

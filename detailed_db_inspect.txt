@@ -1,0 +1,41 @@
+Connecting to: postgresql://ne...
+
+Tables in database:
+- audit_logs
+- users
+- fitness_certificates
+- master_train_data
+- jobcard_status
+- mileage_balancing
+- cleaning_detailing
+- branding_priorities
+- stabling_geometry
+- train_daily_profile
+
+==================================================
+INSPECTING master_train_data
+==================================================
+Columns:
+- train_id (text), Nullable: YES
+- rolling_stock_status (text), Nullable: YES
+- signalling_status (text), Nullable: YES
+- telecom_status (text), Nullable: YES
+- highest_open_job_priority (text), Nullable: YES
+- kilometers_since_last_maintenance (bigint), Nullable: YES
+- maintenance_threshold (bigint), Nullable: YES
+- urgency_level (text), Nullable: YES
+- penalty_risk_level (text), Nullable: YES
+- days_since_last_clean (bigint), Nullable: YES
+- compliance_status (text), Nullable: YES
+- track_id (text), Nullable: YES
+- position (bigint), Nullable: YES
+- estimated_shunting_time_minutes (bigint), Nullable: YES
+- rolling_stock_expiry (text), Nullable: YES
+- signalling_expiry (text), Nullable: YES
+- telecom_expiry (text), Nullable: YES
+- advertiser_name (text), Nullable: YES
+- total_kilometers (bigint), Nullable: YES
+
+Indices:
+
+Primary Keys:

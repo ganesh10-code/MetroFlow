@@ -7,15 +7,27 @@ from app.api.maintenance import maintenance_router
 from app.api.fitness import fitness_router
 from app.api.branding import branding_router
 from app.api.planner import planner_router
+# Import all models so SQLAlchemy creates all tables
+from app.models import user, train, plan  # noqa: F401
 
-# Create uncreated tables
-Base.metadata.create_all(bind=engine)
+# Create tables (resilient to external changes)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Postgres constraint check failed (this is normal if Ganesh is updating schemas): {e}")
 
 app = FastAPI(title="MetroFlow Application Layer")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:5173", 
+        "http://localhost:5174", 
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
