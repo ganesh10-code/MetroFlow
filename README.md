@@ -30,6 +30,7 @@ Swagger UI is available at `http://localhost:8000/docs`.
 Start the React + Vite frontend (from the `frontend` directory):
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 The App will be available at `http://localhost:5173`.
@@ -126,34 +127,48 @@ Since real historical logs are unavailable, the system generates **synthetic dai
 
 # ▶️ How to Run
 
-### 1️⃣ Install dependencies
+### 1️⃣ Create Virtual Environment and activate
+```bash
+py -3.11 -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+
+### Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2️⃣ Generate daily operational data
+### Generate daily operational data
 
 ```bash
 python -m scripts.daily_data_generator
 ```
 
-### 3️⃣ Load data into PostgreSQL
+### Load data into PostgreSQL
 
 ```bash
 python -m pipeline.feature_pipeline
 ```
 
-### 4️⃣ Train ML model
+### Train ML model
 
 ```bash
 python -m ml.train_model
 ```
 
-### 5️⃣ Start API server
+### Plan Generation
 
 ```bash
-uvicorn backend.api:app --reload
+python -m ml.plan_engine.py
+```
+
+### Start API server
+
+```bash
+cd backend
+uvicorn app.api:app --reload
 ```
 
 Open API documentation:
