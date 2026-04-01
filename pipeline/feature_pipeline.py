@@ -5,12 +5,66 @@ import os
 import sys
 
 if not DATABASE_URL:
-    print("Error: DATABASE_URL is not set. Cannot run pipeline.")
+    print("❌ Error: DATABASE_URL is not set.")
     sys.exit(1)
 
 engine = create_engine(DATABASE_URL)
 
+
+# -------------------------------
+# Check if table exists
+# -------------------------------
+def table_exists(conn, table_name):
+    result = conn.execute(text(f"""
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_name = '{table_name}'
+        );
+    """))
+    return result.scalar()
+
+
+# -------------------------------
+# Create schema (only once)
+# -------------------------------
+def create_schema_if_needed():
+    with engine.connect() as conn:
+        if not table_exists(conn, "master_train_data"):
+            print("📄 Tables not found → Creating schema...")
+
+            with open("database/schema.sql", "r") as f:
+                schema_sql = f.read()
+
+            conn.execute(text(schema_sql))
+            print("✅ Schema created")
+        else:
+            print("✅ Tables already exist → Skipping schema creation")
+
+
+# -------------------------------
+# Clear ONLY dynamic tables
+# -------------------------------
+def clear_dynamic_data():
+    dynamic_tables = [
+        "plan_details",
+        "plans",
+        "train_daily_profile"
+    ]
+
+    with engine.begin() as conn:
+        for table in dynamic_tables:
+            try:
+                conn.execute(text(f"DELETE FROM {table}"))
+                print(f"🧹 Cleared {table}")
+            except Exception:
+                print(f"⚠️ Skip {table} (may not exist)")
+
+
+# -------------------------------
+# Load data smartly
+# -------------------------------
 def load_data():
+
     datasets = {
         "master_train_data": "datasets/master_train_data.csv",
         "jobcard_status": "datasets/jobcard_status.csv",
@@ -22,37 +76,61 @@ def load_data():
         "train_daily_profile": "generated/train_daily_profile.csv"
     }
 
-    # Safe ingestion: Delete existing rows in reverse dependency order instead of dropping tables
-    with engine.begin() as conn:
-        for table in reversed(list(datasets.keys())):
+    with engine.connect() as conn:
+
+        for table, file in datasets.items():
+
+            if not os.path.exists(file):
+                print(f"⚠️ File missing: {file}")
+                continue
+
+            # -------------------------------
+            # Skip STATIC tables if already loaded
+            # -------------------------------
+            if table != "train_daily_profile":
+                try:
+                    result = conn.execute(text(f"SELECT COUNT(*) FROM {table}"))
+                    if result.scalar() > 0:
+                        print(f"⏭️ Skipping {table} (already loaded)")
+                        continue
+                except Exception:
+                    pass
+
+            # -------------------------------
+            # Load CSV
+            # -------------------------------
+            df = pd.read_csv(file)
+
+            # Normalize column names
+            df.columns = [
+                col.lower().replace('-', '_').replace(' ', '_')
+                for col in df.columns
+            ]
+
+            print(f"\n📦 Loading {table}")
+            print(f"Columns: {list(df.columns)}")
+
             try:
-                # Using DELETE instead of TRUNCATE to avoid CASCADE issues if not supported
-                conn.execute(text(f"DELETE FROM {table}"))
+                df.to_sql(
+                    table,
+                    engine,
+                    if_exists="append",
+                    index=False
+                )
+                print(f"✅ {table} inserted")
+
             except Exception as e:
-                pass # Table might not exist yet if created by pandas dynamically
+                print(f"❌ ERROR in {table}: {e}")
 
-    for table, file in datasets.items():
-        if not os.path.exists(file):
-            print(f"Warning: File {file} not found. Skipping.")
-            continue
-            
-        df = pd.read_csv(file)
-        
-        # Normalize columns: lower case and replace dashes/spaces with underscores to match schema.sql
-        df.columns = [col.lower().replace('-', '_').replace(' ', '_') for col in df.columns]
-        
-        try:
-            df.to_sql(
-                table,
-                engine,
-                if_exists="append",
-                index=False
-            )
-            print(f"✅ {table} loaded safely with constraints preserved")
-        except Exception as e:
-            print(f"❌ Failed to load {table}: {e}")
 
+# -------------------------------
+# MAIN EXECUTION
+# -------------------------------
 if __name__ == "__main__":
-    print("Starting safe data ingestion pipeline...")
+    print("🚀 Starting smart pipeline...")
+
+    create_schema_if_needed()
+    clear_dynamic_data()
     load_data()
-    print("Ingestion complete.")
+
+    print("\n✅ Pipeline completed successfully.")
