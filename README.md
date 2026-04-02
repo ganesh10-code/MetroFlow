@@ -2,7 +2,7 @@
 
 ## Phase 1: Application Layer Complete
 
-**Note from Development Phase 1:**
+**Development Phase 1:**
 The core application framework has been built. The UI, authentication, role-based access, and APIs are ready. 
 The ML Optimizer and real AI models are placeholders currently living in `backend/app/services/core_adapter.py` and `genai_adapter.py`. Generating the plan is completely decoupled so Ganesh can simply plug in the ML Core algorithm during Phase 2 without rewriting the application._
 
@@ -108,7 +108,7 @@ Since real historical logs are unavailable, the system generates **synthetic dai
 py -3.11 -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
-# Note: only 3.10 or 3.11 is compatible for some python packages like numpy, pandas
+#### Note: only 3.10 or 3.11 is compatible for some python packages like numpy, pandas
 ### Install dependencies
 
 ```bash
