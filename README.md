@@ -1,40 +1,12 @@
-# METROFLOW [# AI-Based Train Induction Planning System
+# METROFLOW [ AI-Based Train Induction Planning System ]
 
 ## Phase 1: Application Layer Complete
 
 **Note from Development Phase 1:**
 The core application framework has been built. The UI, authentication, role-based access, and APIs are ready. 
-_The ML Optimizer and real AI models are placeholders currently living in `backend/app/services/core_adapter.py` and `genai_adapter.py`. Generating the plan is completely decoupled so Ganesh can simply plug in the ML Core algorithm during Phase 2 without rewriting the application._
+The ML Optimizer and real AI models are placeholders currently living in `backend/app/services/core_adapter.py` and `genai_adapter.py`. Generating the plan is completely decoupled so Ganesh can simply plug in the ML Core algorithm during Phase 2 without rewriting the application._
 
 ---
-
-## 🚀 Run Instructions
-
-### 1. Database Setup
-Make sure PostgreSQL is running, and `.env` has your `DATABASE_URL` set.
-Seed the initial database models and users:
-```bash
-python scripts/seed_data.py
-```
-*Note: This generates default users like `admin`, `planner`, `maintenance`, `fitness`, `branding`, all with password `password123`.*
-
-### 2. Run Backend
-Start the FastAPI server (from the `backend` directory):
-```bash
-cd backend
-uvicorn app.main:app --reload --port 8000
-```
-Swagger UI is available at `http://localhost:8000/docs`.
-
-### 3. Run Frontend
-Start the React + Vite frontend (from the `frontend` directory):
-```bash
-cd frontend
-npm install
-npm run dev
-```
-The App will be available at `http://localhost:5173`.
-
 
 ### 🚦 Next Steps for Ganesh (Phase 2):
 1. **Core Adapter**: Provide real implementations in `backend/app/services/core_adapter.py` for generating optimization plans.
@@ -87,22 +59,23 @@ datasets/ # Raw datasets
 generated/ # Generated daily operational data
 
 database/
-schema.sql # PostgreSQL schema
+  schema.sql # PostgreSQL schema
 
 scripts/
-daily_data_generator.py
+  daily_data_generator.py
 
 pipeline/
-feature_pipeline.py # Data ingestion pipeline
+  feature_pipeline.py # Data ingestion pipeline
 
 ml/
-train_model.py # ML training script
+  train_model.py # ML training script
+  planner_engine.py # Generates the plan
 
 backend/
-api.py # FastAPI backend
+  main.py # FastAPI backend
 
-models/
-risk_model.pkl # Trained ML model
+trained_models/
+  risk_model.pkl # Trained ML model
 
 requirements.txt
 README.md
@@ -125,15 +98,17 @@ Since real historical logs are unavailable, the system generates **synthetic dai
 
 ---
 
-# ▶️ How to Run
+# ▶️ Run Instructions
+## NOTE: Make sure PostgreSQL is running, and `.env` has your `DATABASE_URL` set.
 
-### 1️⃣ Create Virtual Environment and activate
+## Backend
+
+### Create Virtual Environment and activate
 ```bash
 py -3.11 -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
-
-
+# Note: only 3.10 or 3.11 is compatible for some python packages like numpy, pandas
 ### Install dependencies
 
 ```bash
@@ -170,6 +145,17 @@ python -m ml.plan_engine.py
 cd backend
 uvicorn app.api:app --reload
 ```
-
 Open API documentation:
 http://127.0.0.1:8000/docs
+
+## Frontend
+### Run Frontend
+Start the React + Vite frontend (from the `frontend` directory):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The App will be available at `http://localhost:5173`.
