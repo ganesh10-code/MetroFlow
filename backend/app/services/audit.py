@@ -1,18 +1,19 @@
 from sqlalchemy.orm import Session
-from app.models.user import AuditLog
+from sqlalchemy import text
 from datetime import datetime
 
+
 def log_action(db: Session, user_id: int, action: str, target_entity: str, target_id: str, details: str = ""):
-    """
-    Basic audit logging utility.
-    """
-    new_log = AuditLog(
-        user_id=user_id,
-        action=action,
-        target_entity=target_entity,
-        target_id=target_id,
-        timestamp=datetime.utcnow(),
-        details=details
-    )
-    db.add(new_log)
+    db.execute(text("""
+        INSERT INTO audit_logs (user_id, action, target_entity, target_id, timestamp, details)
+        VALUES (:user_id, :action, :entity, :target_id, :time, :details)
+    """), {
+        "user_id": user_id,
+        "action": action,
+        "entity": target_entity,
+        "target_id": target_id,
+        "time": datetime.utcnow(),
+        "details": details
+    })
+
     db.commit()

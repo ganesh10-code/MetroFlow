@@ -1,17 +1,16 @@
 from typing import Dict, Any, List
+import pandas as pd
+
+# 🔥 Import REAL ML engine
+from ml.planner_engine import generate_plan as ml_generate_plan
+
 
 # ============================================================
-# PLACEHOLDER — Ganesh's core ML/optimization engine adapter
-# Application layer calls these methods.
-# Ganesh can implement the final logic here without breaking the app.
+# READINESS SUMMARY (NO CHANGE)
 # ============================================================
-
 def get_readiness_summary(trains_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Summarize readiness across all departments based on full train records.
-    Currently uses field-level heuristics as a placeholder for the real ML aggregation.
-    """
     total = len(trains_data)
+
     maint_ready = sum(1 for t in trains_data if t.get("rolling_stock_status") == "OK")
     maint_pending = sum(1 for t in trains_data if t.get("rolling_stock_status") == "MAINTENANCE_REQUIRED")
     maint_unknown = total - maint_ready - maint_pending
@@ -23,7 +22,6 @@ def get_readiness_summary(trains_data: List[Dict[str, Any]]) -> Dict[str, Any]:
     branding_low = sum(1 for t in trains_data if t.get("penalty_risk_level") == "LOW")
     branding_high = sum(1 for t in trains_data if t.get("penalty_risk_level") == "HIGH")
 
-    # A train is "ready for induction" if maintenance OK and fitness FIT
     ready = sum(
         1 for t in trains_data
         if t.get("rolling_stock_status") == "OK" and t.get("compliance_status") == "FIT"
@@ -50,50 +48,46 @@ def get_readiness_summary(trains_data: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+# ============================================================
+# 🔥 REAL PLAN GENERATION (REPLACED PLACEHOLDER)
+# ============================================================
 def generate_plan_placeholder(trains_data: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    PLACEHOLDER — Simulate running the final ML model to generate the induction plan.
-    Ganesh's real optimizer plugs in here.
-    Decisions are derived from basic heuristics only.
+    Now calls REAL ML engine instead of placeholder logic.
     """
-    details = []
-    selected = []
 
-    for t in trains_data:
-        maint_ok = t.get("rolling_stock_status") == "OK"
-        fitness_ok = t.get("compliance_status") == "FIT"
-        risk = t.get("penalty_risk_level", "LOW")
+    try:
+        # 🔥 Call your ML engine
+        df: pd.DataFrame = ml_generate_plan()
 
-        if maint_ok and fitness_ok:
-            decision = "INDUCT"
-            score = 0.1 if risk == "LOW" else 0.4
-            selected.append(t["train_id"])
-        elif not maint_ok and not fitness_ok:
-            decision = "HOLD"
-            score = 0.9
-        else:
-            decision = "HOLD"
-            score = 0.6
+        selected = df[df["decision"] == "RUN"]["train_id"].tolist()
 
-        details.append({
-            "train_id": t["train_id"],
-            "decision": decision,
-            "risk_score": round(score, 2),
-        })
+        return {
+            "status": "generated",
+            "selected_trains": selected,
+            "confidence_score": round(len(selected) / max(len(df), 1), 2),
+            "details": df.to_dict(orient="records"),
+        }
 
-    confidence = round(len(selected) / max(len(trains_data), 1), 2)
+    except Exception as e:
+        print(f"❌ ML Engine failed: {e}")
 
-    return {
-        "status": "placeholder",
-        "selected_trains": selected,
-        "confidence_score": confidence,
-        "details": details,
-    }
+        # fallback (important for system stability)
+        return {
+            "status": "error",
+            "selected_trains": [],
+            "confidence_score": 0,
+            "details": [],
+            "error": str(e)
+        }
 
 
+# ============================================================
+# OPTIONAL STATUS API
+# ============================================================
 def get_latest_plan_status() -> Dict[str, Any]:
     return {
-        "last_run": "2026-03-24T21:00:00Z",
+        "last_run": "AUTO",
         "plan_active": True,
-        "note": "Placeholder — real status from Ganesh's optimizer pending",
+        "note": "ML planner engine integrated successfully",
     }

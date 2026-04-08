@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-MODEL_PATH = os.getenv("MODEL_PATH", "models/risk_model.pkl")
+MODEL_PATH = os.getenv("MODEL_PATH", "trained_models/risk_model.pkl")
 
 # Basic validation to alert the developer
 if not DATABASE_URL:
