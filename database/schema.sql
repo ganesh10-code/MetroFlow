@@ -208,3 +208,43 @@ CREATE TABLE IF NOT EXISTS real_daily_features (
     shunting_time INT,
     risk_label INT
 );
+
+-- =====================================================
+-- OCR COUNTS TABLE
+-- Operators define run / standby counts externally
+-- =====================================================
+CREATE TABLE IF NOT EXISTS operations_control_room (
+    id SERIAL PRIMARY KEY,
+    run_count INT NOT NULL,
+    standby_count INT NOT NULL,
+    updated_by VARCHAR,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- =====================================================
+-- PLAN VERSIONING
+-- Stores generated plan before final override
+-- =====================================================
+CREATE TABLE IF NOT EXISTS plan_versions (
+    id SERIAL PRIMARY KEY,
+    version_type VARCHAR CHECK (
+        version_type IN ('GENERATED', 'FINALIZED')
+    ),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reference_plan_id INT,
+    notes TEXT
+);
+
+
+-- =====================================================
+-- SIMULATION LOGS
+-- Stores what-if scenarios executed
+-- =====================================================
+CREATE TABLE IF NOT EXISTS simulation_logs (
+    id SERIAL PRIMARY KEY,
+    scenario_name VARCHAR,
+    created_by VARCHAR,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    remarks TEXT
+);

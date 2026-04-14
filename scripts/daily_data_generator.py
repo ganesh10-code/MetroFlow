@@ -122,3 +122,6 @@ def generate_daily_data():
     df.to_csv(GENERATED_PATH, index=False)
 
     print("✅ Synthetic data generated")
+
+if __name__ == "__main__":
+    generate_daily_data()

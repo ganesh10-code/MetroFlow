@@ -16,6 +16,7 @@ from app.api.maintenance import maintenance_router
 from app.api.fitness import fitness_router
 from app.api.branding import branding_router
 from app.api.planner import planner_router
+from app.api.operational import operational_router
 
 # 🔥 Add project root (MetroFlow) to Python path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -89,6 +90,8 @@ async def lifespan(app: FastAPI):
                     ("Maintenance Chief", "maintenance", "maintenance123", "MAINTENANCE"),
                     ("Fitness Inspector", "fitness", "fitness123", "FITNESS"),
                     ("Branding Manager", "branding", "branding123", "BRANDING"),
+                    ("Cleaning Supervisor", "cleaning", "cleaning123", "CLEANING"),
+                    ("Operations Controller", "operations", "operations123", "OPERATIONS")
                 ]
 
                 for name, username, password, role in users:
@@ -172,6 +175,7 @@ app.include_router(maintenance_router, prefix="/maintenance", tags=["maintenance
 app.include_router(fitness_router, prefix="/fitness", tags=["fitness"])
 app.include_router(branding_router, prefix="/branding", tags=["branding"])
 app.include_router(planner_router, prefix="/planner", tags=["planner"])
+app.include_router(operational_router,prefix="/operations",tags=["Operations Control Room"])
 
 
 # ============================================================

@@ -1,93 +1,176 @@
+# backend/app/services/core_adapter.py
+
 from typing import Dict, Any, List
 import pandas as pd
 
-# 🔥 Import REAL ML engine
-from ml.planner_engine import generate_plan as ml_generate_plan
+from ml.planner_engine import generate_temp_plan
 
 
-# ============================================================
-# READINESS SUMMARY (NO CHANGE)
-# ============================================================
-def get_readiness_summary(trains_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+# ==========================================================
+# READINESS SUMMARY
+# Used for dashboards / admin monitoring
+# ==========================================================
+def get_readiness_summary(
+    trains_data: List[Dict[str, Any]]
+) -> Dict[str, Any]:
+
     total = len(trains_data)
-
-    maint_ready = sum(1 for t in trains_data if t.get("rolling_stock_status") == "OK")
-    maint_pending = sum(1 for t in trains_data if t.get("rolling_stock_status") == "MAINTENANCE_REQUIRED")
-    maint_unknown = total - maint_ready - maint_pending
-
-    fitness_fit = sum(1 for t in trains_data if t.get("compliance_status") == "FIT")
-    fitness_unsafe = sum(1 for t in trains_data if t.get("compliance_status") == "UNSAFE")
-    fitness_unverified = total - fitness_fit - fitness_unsafe
-
-    branding_low = sum(1 for t in trains_data if t.get("penalty_risk_level") == "LOW")
-    branding_high = sum(1 for t in trains_data if t.get("penalty_risk_level") == "HIGH")
 
     ready = sum(
         1 for t in trains_data
-        if t.get("rolling_stock_status") == "OK" and t.get("compliance_status") == "FIT"
+        if t.get("rolling_stock_status") == "OK"
+        and t.get("compliance_status") == "FIT"
     )
+
+    maint_pending = sum(
+        1 for t in trains_data
+        if t.get("rolling_stock_status") != "OK"
+    )
+
+    fitness_fit = sum(
+        1 for t in trains_data
+        if t.get("compliance_status") == "FIT"
+    )
+
+    fitness_unsafe = total - fitness_fit
+
+    branding_high = sum(
+        1 for t in trains_data
+        if t.get("penalty_risk_level") == "HIGH"
+    )
+
+    branding_low = total - branding_high
 
     return {
         "total_trains": total,
         "ready_for_induction": ready,
-        "maintenance_pending": total - maint_ready,
+        "maintenance_pending": maint_pending,
+        "fleet_utilization_pct": round(
+            (ready / max(total, 1)) * 100,
+            2
+        ),
         "maintenance": {
-            "ready": maint_ready,
-            "maintenance_required": maint_pending,
-            "unknown": maint_unknown,
+            "pending": maint_pending,
+            "healthy": total - maint_pending
         },
         "fitness": {
             "fit": fitness_fit,
-            "unsafe": fitness_unsafe,
-            "not_verified": fitness_unverified,
+            "unsafe": fitness_unsafe
         },
         "branding": {
-            "low_risk": branding_low,
             "high_risk": branding_high,
-        },
+            "low_risk": branding_low
+        }
     }
 
 
-# ============================================================
-# 🔥 REAL PLAN GENERATION (REPLACED PLACEHOLDER)
-# ============================================================
-def generate_plan_placeholder(trains_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Now calls REAL ML engine instead of placeholder logic.
-    """
+# ==========================================================
+# REAL PLAN GENERATION
+# Wrapper over planner_engine
+# ==========================================================
+def generate_plan_placeholder():
 
     try:
-        # 🔥 Call your ML engine
-        df: pd.DataFrame = ml_generate_plan()
+        df: pd.DataFrame = generate_temp_plan()
 
-        selected = df[df["decision"] == "RUN"]["train_id"].tolist()
+        selected = df[
+            df["decision"] == "RUN"
+        ]["train_id"].tolist()
+
+        standby = df[
+            df["decision"] == "STANDBY"
+        ]["train_id"].tolist()
+
+        maint = df[
+            df["decision"] == "MAINTENANCE"
+        ]["train_id"].tolist()
 
         return {
             "status": "generated",
             "selected_trains": selected,
-            "confidence_score": round(len(selected) / max(len(df), 1), 2),
-            "details": df.to_dict(orient="records"),
+            "standby_trains": standby,
+            "maintenance_trains": maint,
+            "confidence_score": round(
+                len(selected) / max(len(df), 1),
+                2
+            ),
+            "avg_risk_score": round(
+                float(df["risk_score"].mean()),
+                2
+            ),
+            "details": df.to_dict(
+                orient="records"
+            )
         }
 
     except Exception as e:
-        print(f"❌ ML Engine failed: {e}")
 
-        # fallback (important for system stability)
         return {
             "status": "error",
             "selected_trains": [],
+            "standby_trains": [],
+            "maintenance_trains": [],
             "confidence_score": 0,
+            "avg_risk_score": 0,
             "details": [],
             "error": str(e)
         }
 
 
-# ============================================================
-# OPTIONAL STATUS API
-# ============================================================
-def get_latest_plan_status() -> Dict[str, Any]:
+# ==========================================================
+# QUICK LIVE SUMMARY
+# Useful for admin cards / widgets
+# ==========================================================
+def get_operational_summary():
+
+    try:
+        df = generate_temp_plan()
+
+        return {
+            "total_trains": len(df),
+            "run": int(
+                (df["decision"] == "RUN").sum()
+            ),
+            "standby": int(
+                (df["decision"] == "STANDBY").sum()
+            ),
+            "maintenance": int(
+                (df["decision"] == "MAINTENANCE").sum()
+            ),
+            "avg_risk": round(
+                float(df["risk_score"].mean()),
+                2
+            ),
+            "avg_priority": round(
+                float(df["priority_score"].mean()),
+                2
+            )
+        }
+
+    except Exception as e:
+
+        return {
+            "total_trains": 0,
+            "run": 0,
+            "standby": 0,
+            "maintenance": 0,
+            "avg_risk": 0,
+            "avg_priority": 0,
+            "error": str(e)
+        }
+
+
+# ==========================================================
+# PLAN STATUS
+# ==========================================================
+def get_latest_plan_status():
+
     return {
-        "last_run": "AUTO",
-        "plan_active": True,
-        "note": "ML planner engine integrated successfully",
+        "planner_engine": "ACTIVE",
+        "mode": "ML + ORTOOLS + GENAI",
+        "data_source_priority": "REAL > SYNTHETIC",
+        "what_if_enabled": True,
+        "manual_override": True,
+        "comparison_dashboard": True,
+        "finalize_locking": True
     }
