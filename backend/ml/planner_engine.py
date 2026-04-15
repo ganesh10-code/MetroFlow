@@ -1,14 +1,31 @@
 # backend/ml/planner_engine.py
-
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import pandas as pd
 import joblib
 import json
+import os
+import sys
 from sqlalchemy import create_engine, text
-
 from ml.config import DATABASE_URL, MODEL_PATH
+
+ROOT_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..")
+)
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
+from pipeline.real_feature_pipeline import generate_real_daily_features
+
 
 engine = create_engine(DATABASE_URL)
 
+IST = ZoneInfo("Asia/Kolkata")
+
+def ist_now():
+    return datetime.now(IST)
+def ist_today():
+    return ist_now().date()
 
 # ==========================================================
 # LOAD MODEL
@@ -24,7 +41,11 @@ def load_model():
 # standby_count
 # maintenance_count (new optional column)
 # ==========================================================
+# REPLACE EXISTING get_ocr_counts()
+
 def get_ocr_counts(total_trains):
+
+    today = ist_today()
 
     base_run = 18
     base_standby = 4
@@ -37,14 +58,13 @@ def get_ocr_counts(total_trains):
                 SELECT
                     run_count,
                     standby_count,
-                    COALESCE(
-                        maintenance_count,
-                        0
-                    ) AS maintenance_count
+                    COALESCE(maintenance_count, 0)
                 FROM operations_control_room
-                ORDER BY updated_at DESC
+                WHERE log_date = :today
                 LIMIT 1
-            """)).fetchone()
+            """), {
+                "today": today
+            }).fetchone()
 
             if row:
 
@@ -52,19 +72,16 @@ def get_ocr_counts(total_trains):
                 standby = int(row[1] or 0)
                 maint = int(row[2] or 0)
 
-                # if maint not set -> compute balance
                 if maint <= 0:
                     maint = max(
                         0,
                         total_trains - run - standby
                     )
 
-                # normalize totals
                 total = run + standby + maint
 
                 if total != total_trains:
-                    diff = total_trains - total
-                    maint += diff
+                    maint += (total_trains - total)
 
                 return run, standby, maint
 
@@ -73,47 +90,105 @@ def get_ocr_counts(total_trains):
 
     return base_run, base_standby, base_maint
 
+# ==========================================================
+# FETCH LATEST PLANNING DATA
+# ==========================================================
 
-# ==========================================================
-# FETCH DATA
-# ==========================================================
 def fetch_latest_planning_data():
+
+    today = ist_today()
 
     with engine.begin() as conn:
 
-        for table in [
-            "real_daily_features",
-            "synthetic_daily_features"
-        ]:
+        # --------------------------------------
+        # Dynamic fleet size
+        # --------------------------------------
+        fleet_count = conn.execute(text("""
+            SELECT COUNT(*)
+            FROM master_train_data
+        """)).scalar()
 
-            exists = conn.execute(text(f"""
-                SELECT EXISTS (
-                    SELECT FROM information_schema.tables
-                    WHERE table_name='{table}'
-                )
-            """)).scalar()
+        # --------------------------------------
+        # Check all departments submitted
+        # full fleet today
+        # --------------------------------------
+        counts = conn.execute(text("""
+            SELECT
+            (SELECT COUNT(DISTINCT train_id)
+             FROM maintenance_logs
+             WHERE log_date=:today),
 
-            if exists:
+            (SELECT COUNT(DISTINCT train_id)
+             FROM cleaning_logs
+             WHERE log_date=:today),
 
-                cnt = conn.execute(
-                    text(f"SELECT COUNT(*) FROM {table}")
-                ).scalar()
+            (SELECT COUNT(DISTINCT train_id)
+             FROM fitness_logs
+             WHERE log_date=:today),
 
-                if cnt > 0:
+            (SELECT COUNT(DISTINCT train_id)
+             FROM branding_logs
+             WHERE log_date=:today),
 
-                    df = pd.read_sql(
-                        f"SELECT * FROM {table}",
-                        conn
-                    )
+            (SELECT COUNT(DISTINCT train_id)
+             FROM mileage_logs
+             WHERE log_date=:today)
+        """), {
+            "today": today
+        }).fetchone()
 
-                    latest = df["date"].max()
+        all_ready = all(
+            int(x or 0) >= int(fleet_count)
+            for x in counts
+        )
 
-                    return df[
-                        df["date"] == latest
-                    ].copy()
+        # --------------------------------------
+        # USE REAL DATA ONLY IF ALL READY
+        # --------------------------------------
+        if all_ready:
+
+            generate_real_daily_features()
+
+            cnt = conn.execute(text("""
+                SELECT COUNT(*)
+                FROM real_daily_features
+                WHERE date = :today
+            """), {
+                "today": today
+            }).scalar()
+
+            if cnt > 0:
+                return pd.read_sql(text("""
+                    SELECT *
+                    FROM real_daily_features
+                    WHERE date = :today
+                    ORDER BY train_id
+                """), conn, params={
+                    "today": today
+                })
+
+        # --------------------------------------
+        # FALLBACK SYNTHETIC
+        # --------------------------------------
+        cnt = conn.execute(text("""
+            SELECT COUNT(*)
+            FROM synthetic_daily_features
+            WHERE date = :today
+        """), {
+            "today": today
+        }).scalar()
+
+        if cnt > 0:
+            return pd.read_sql(text("""
+                SELECT *
+                FROM synthetic_daily_features
+                WHERE date = :today
+                ORDER BY train_id
+            """), conn, params={
+                "today": today
+            })
 
     raise Exception("No planning data available")
-
 
 # ==========================================================
 # POPUP TABLES
@@ -125,8 +200,8 @@ def get_department_popup_data(dept):
         "cleaning_logs": "cleaning_logs",
         "fitness_logs": "fitness_logs",
         "branding_logs": "branding_logs",
-        "operations_control_room":
-            "operations_control_room"
+        "operations_control_room": "operations_control_room",
+        "mileage_logs": "mileage_logs"
     }
 
     table = mapping.get(dept.lower())
@@ -476,45 +551,66 @@ def generate_temp_plan(config=None):
 # ==========================================================
 # SAVE FINAL
 # ==========================================================
+# REPLACE EXISTING save_final_plan()
+
 def save_final_plan(df):
+
+    today = str(df["date"].iloc[0])
 
     with engine.begin() as conn:
 
-        result = conn.execute(text("""
+        # -----------------------------------
+        # UPSERT plans
+        # -----------------------------------
+        conn.execute(text("""
             INSERT INTO plans(
                 date,
                 total_trains,
                 maintenance_count,
                 standby_count,
                 run_count,
-                avg_risk_score
+                avg_risk_score,
+                created_at,
+                updated_at
             )
             VALUES(
-                :date,:total,:m,:s,:r,:avg
+                :date,:total,:m,:s,:r,:avg,
+                CURRENT_TIMESTAMP,
+                CURRENT_TIMESTAMP
             )
-            RETURNING id
+
+            ON CONFLICT (date)
+
+            DO UPDATE SET
+                total_trains = EXCLUDED.total_trains,
+                maintenance_count = EXCLUDED.maintenance_count,
+                standby_count = EXCLUDED.standby_count,
+                run_count = EXCLUDED.run_count,
+                avg_risk_score = EXCLUDED.avg_risk_score,
+                updated_at = CURRENT_TIMESTAMP
         """), {
-            "date": str(df["date"].iloc[0]),
+            "date": today,
             "total": int(len(df)),
-            "m": int(
-                (df["decision"]
-                 == "MAINTENANCE").sum()
-            ),
-            "s": int(
-                (df["decision"]
-                 == "STANDBY").sum()
-            ),
-            "r": int(
-                (df["decision"]
-                 == "RUN").sum()
-            ),
-            "avg": float(
-                df["risk_score"].mean()
-            )
+            "m": int((df["decision"] == "MAINTENANCE").sum()),
+            "s": int((df["decision"] == "STANDBY").sum()),
+            "r": int((df["decision"] == "RUN").sum()),
+            "avg": float(df["risk_score"].mean())
         })
 
-        pid = int(result.fetchone()[0])
+        # -----------------------------------
+        # Get plan id
+        # -----------------------------------
+        pid = conn.execute(text("""
+            SELECT id
+            FROM plans
+            WHERE date = :date
+        """), {
+            "date": today
+        }).scalar()
 
+        # -----------------------------------
+        # UPSERT details
+        # -----------------------------------
         for _, row in df.iterrows():
 
             conn.execute(text("""
@@ -524,11 +620,24 @@ def save_final_plan(df):
                     decision,
                     risk_score,
                     priority_score,
-                    reason
+                    reason,
+                    created_at,
+                    updated_at
                 )
                 VALUES(
-                    :pid,:tid,:d,:r,:p,:reason
+                    :pid,:tid,:d,:r,:p,:reason,
+                    CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP
                 )
+
+                ON CONFLICT (plan_id, train_id)
+
+                DO UPDATE SET
+                    decision = EXCLUDED.decision,
+                    risk_score = EXCLUDED.risk_score,
+                    priority_score = EXCLUDED.priority_score,
+                    reason = EXCLUDED.reason,
+                    updated_at = CURRENT_TIMESTAMP
             """), {
                 "pid": pid,
                 "tid": str(row["train_id"]),
@@ -543,14 +652,11 @@ def save_final_plan(df):
 
     save_plan_version(
         "FINALIZED",
-        df.to_dict(
-            orient="records"
-        ),
+        df.to_dict(orient="records"),
         "Final approved plan"
     )
 
     return pid
-
 
 # ==========================================================
 # COMPARE

@@ -96,40 +96,57 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE audit_logs (
-    id SERIAL PRIMARY KEY,
-    user_id INT,
-    action VARCHAR,
-    target_entity VARCHAR,
-    target_id VARCHAR,
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    details TEXT
-);
+--- plan tables ---
 
-CREATE TABLE plans (
+CREATE TABLE IF NOT EXISTS plans (
     id SERIAL PRIMARY KEY,
     date DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     total_trains INT,
     maintenance_count INT,
     standby_count INT,
     run_count INT,
-    avg_risk_score FLOAT
+    avg_risk_score FLOAT,
+    CONSTRAINT uq_plans_date
+    UNIQUE (date)
 );
 
-CREATE TABLE plan_details (
+CREATE TABLE IF NOT EXISTS plan_details (
+id SERIAL PRIMARY KEY,
+plan_id INT NOT NULL,
+train_id VARCHAR NOT NULL,
+decision VARCHAR
+CHECK (
+    decision IN (
+        'RUN',
+        'MAINTENANCE',
+        'STANDBY'
+    )
+),
+risk_score FLOAT,
+priority_score FLOAT,
+reason TEXT,
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY (plan_id)
+    REFERENCES plans(id)
+    ON DELETE CASCADE,
+FOREIGN KEY (train_id)
+    REFERENCES master_train_data(train_id),
+CONSTRAINT uq_plan_details_train
+UNIQUE (plan_id, train_id)
+);
+
+CREATE TABLE IF NOT EXISTS plan_versions (
     id SERIAL PRIMARY KEY,
-    plan_id INT,
-    train_id VARCHAR,
-    decision VARCHAR CHECK (decision IN ('RUN','MAINTENANCE','STANDBY')),
-    risk_score FLOAT,
-    priority_score FLOAT,
-    reason TEXT,
-
-    FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE CASCADE,
-    FOREIGN KEY (train_id) REFERENCES master_train_data(train_id)
+    version_type VARCHAR CHECK (
+        version_type IN ('GENERATED', 'FINALIZED')
+    ),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reference_plan_id INT,
+    notes TEXT
 );
-
 
 -- SYNTHETIC DAILY FEATURES
 CREATE TABLE synthetic_daily_features (
@@ -146,6 +163,39 @@ CREATE TABLE synthetic_daily_features (
     penalty_risk_level VARCHAR,
     shunting_time INT,
     risk_label INT
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- REAL DAILY FEATURES TABLE
+CREATE TABLE IF NOT EXISTS real_daily_features (
+    id SERIAL PRIMARY KEY,
+
+    date DATE NOT NULL,
+    train_id VARCHAR NOT NULL,
+
+    open_jobs INT,
+    urgency_level VARCHAR,
+
+    mileage_today FLOAT,
+
+    days_since_clean INT,
+    cleaning_required INT,
+
+    compliance_status VARCHAR,
+
+    branding_priority INT,
+    penalty_risk_level VARCHAR,
+
+    shunting_time INT,
+
+    risk_label INT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_real_daily_features
+    UNIQUE (date, train_id)
 );
 
 -- MODEL METADATA (for smart retraining)
@@ -161,79 +211,76 @@ CREATE TABLE model_metadata (
 
 CREATE TABLE IF NOT EXISTS maintenance_logs (
     id SERIAL PRIMARY KEY,
-    train_id VARCHAR,
+    log_date DATE DEFAULT CURRENT_DATE,
+    train_id VARCHAR NOT NULL,
     open_jobs INT,
     urgency_level VARCHAR,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (log_date, train_id)
 );
 
 CREATE TABLE IF NOT EXISTS cleaning_logs (
     id SERIAL PRIMARY KEY,
-    train_id VARCHAR,
+    log_date DATE DEFAULT CURRENT_DATE,
+    train_id VARCHAR NOT NULL,
     cleaning_done BOOLEAN,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (log_date, train_id)
 );
 
 CREATE TABLE IF NOT EXISTS fitness_logs (
     id SERIAL PRIMARY KEY,
-    train_id VARCHAR,
+    log_date DATE DEFAULT CURRENT_DATE,
+    train_id VARCHAR NOT NULL,
     compliance_status VARCHAR,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (log_date, train_id)
 );
 
 CREATE TABLE IF NOT EXISTS branding_logs (
     id SERIAL PRIMARY KEY,
-    train_id VARCHAR,
+    log_date DATE DEFAULT CURRENT_DATE,
+    train_id VARCHAR NOT NULL,
     branding_priority INT,
     penalty_risk_level VARCHAR,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (log_date, train_id)
 );
 
--- ===============================
--- 🔥 REAL DAILY FEATURES TABLE
--- ===============================
-
-CREATE TABLE IF NOT EXISTS real_daily_features (
-    id SERIAL PRIMARY KEY,
-    date DATE,
-    train_id VARCHAR,
-    open_jobs INT,
-    urgency_level VARCHAR,
-    mileage_today FLOAT,
-    days_since_clean INT,
-    cleaning_required INT,
-    compliance_status VARCHAR,
-    branding_priority INT,
-    penalty_risk_level VARCHAR,
-    shunting_time INT,
-    risk_label INT
-);
-
--- =====================================================
--- OCR COUNTS TABLE
--- Operators define run / standby counts externally
--- =====================================================
 CREATE TABLE IF NOT EXISTS operations_control_room (
     id SERIAL PRIMARY KEY,
+    log_date DATE DEFAULT CURRENT_DATE,
     run_count INT NOT NULL,
     standby_count INT NOT NULL,
+    maintenance_count INT NOT NULL,
     updated_by VARCHAR,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (log_date)
 );
 
-
--- =====================================================
--- PLAN VERSIONING
--- Stores generated plan before final override
--- =====================================================
-CREATE TABLE IF NOT EXISTS plan_versions (
+CREATE TABLE IF NOT EXISTS mileage_logs (
     id SERIAL PRIMARY KEY,
-    version_type VARCHAR CHECK (
-        version_type IN ('GENERATED', 'FINALIZED')
-    ),
+    log_date DATE NOT NULL,
+    train_id VARCHAR NOT NULL,
+    mileage_today FLOAT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    reference_plan_id INT,
-    notes TEXT
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (log_date, train_id),
+);
+
+CREATE TABLE audit_logs (
+    id SERIAL PRIMARY KEY,
+    user_id INT,
+    action VARCHAR,
+    target_entity VARCHAR,
+    target_id VARCHAR,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    details TEXT
 );
 
 

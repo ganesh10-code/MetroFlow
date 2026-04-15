@@ -1,45 +1,23 @@
-// src/pages/BrandingDashboard.tsx
+// src/pages/CleaningDashboard.jsx
 
 import React, { useEffect, useState } from "react";
 import api from "../config/axios";
 import toast, { Toaster } from "react-hot-toast";
 
-type Train = {
-  train_id: string;
-};
-
-type DraftRow = {
-  train_id: string;
-  branding_priority: number;
-  penalty_risk_level: string;
-};
-
-type TodayRow = {
-  train_id: string;
-  branding_priority: number;
-  penalty_risk_level: string;
-  updated_at: string;
-};
-
-type PlanRow = {
-  train_id: string;
-  decision: string;
-};
-
-export default function BrandingDashboard() {
-  const [trains, setTrains] = useState<Train[]>([]);
-  const [draftRows, setDraftRows] = useState<Record<string, DraftRow>>({});
-  const [todayRows, setTodayRows] = useState<TodayRow[]>([]);
+export default function CleaningDashboard() {
+  const [trains, setTrains] = useState([]);
+  const [draftRows, setDraftRows] = useState({});
+  const [todayRows, setTodayRows] = useState([]);
 
   const [submittedToday, setSubmittedToday] = useState(false);
+
   const [locked, setLocked] = useState(false);
 
-  const [plan, setPlan] = useState<PlanRow[]>([]);
+  const [plan, setPlan] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [trainId, setTrainId] = useState("");
-  const [priority, setPriority] = useState(1);
-  const [risk, setRisk] = useState("LOW");
+  const [cleaningDone, setCleaningDone] = useState(false);
 
   useEffect(() => {
     init();
@@ -58,7 +36,7 @@ export default function BrandingDashboard() {
 
   const loadTrains = async () => {
     try {
-      const res = await api.get("/branding/trains");
+      const res = await api.get("/cleaning/trains");
       setTrains(res.data || []);
     } catch {
       toast.error("Failed to load trains");
@@ -67,7 +45,7 @@ export default function BrandingDashboard() {
 
   const loadStatus = async () => {
     try {
-      const res = await api.get("/branding/status");
+      const res = await api.get("/cleaning/status");
       setSubmittedToday(res.data.submitted_today);
     } catch {}
 
@@ -79,7 +57,7 @@ export default function BrandingDashboard() {
 
   const loadTodayRows = async () => {
     try {
-      const res = await api.get("/branding/today");
+      const res = await api.get("/cleaning/today");
       setTodayRows(res.data || []);
     } catch {}
   };
@@ -92,7 +70,7 @@ export default function BrandingDashboard() {
   };
 
   // ------------------------------------
-  // ADD / UPDATE
+  // ADD / UPDATE LOCAL ENTRY
   // ------------------------------------
 
   const addRow = () => {
@@ -105,23 +83,21 @@ export default function BrandingDashboard() {
       ...prev,
       [trainId]: {
         train_id: trainId,
-        branding_priority: Number(priority),
-        penalty_risk_level: risk,
+        cleaning_done: cleaningDone,
       },
     }));
 
     toast.success("Entry added / updated");
 
     setTrainId("");
-    setPriority(1);
-    setRisk("LOW");
+    setCleaningDone(false);
   };
 
   // ------------------------------------
-  // DELETE
+  // DELETE LOCAL ENTRY
   // ------------------------------------
 
-  const deleteRow = (id: string) => {
+  const deleteRow = (id) => {
     const temp = { ...draftRows };
     delete temp[id];
     setDraftRows(temp);
@@ -137,7 +113,7 @@ export default function BrandingDashboard() {
     try {
       setLoading(true);
 
-      await api.post("/branding/submit", Object.values(draftRows));
+      await api.post("/cleaning/submit", Object.values(draftRows));
 
       setDraftRows({});
 
@@ -146,7 +122,7 @@ export default function BrandingDashboard() {
       await loadStatus();
       await loadTodayRows();
       await loadPlan();
-    } catch (err: any) {
+    } catch (err) {
       toast.error(err?.response?.data?.detail || "Submission failed");
     } finally {
       setLoading(false);
@@ -164,7 +140,7 @@ export default function BrandingDashboard() {
       {/* ADD ENTRY */}
       <Card title="Add Train Entry">
         <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-6">
-          <div className="grid md:grid-cols-4 gap-5">
+          <div className="grid md:grid-cols-3 gap-5">
             {/* Train */}
             <div>
               <label className="block text-md font-semibold font-medium text-slate-300 mb-3">
@@ -193,38 +169,21 @@ export default function BrandingDashboard() {
               </select>
             </div>
 
-            {/* Priority */}
+            {/* Cleaning */}
             <div>
               <label className="block text-md font-semibold font-medium text-slate-300 mb-3">
-                Priority (1-10)
-              </label>
-
-              <input
-                type="number"
-                min="1"
-                max="10"
-                value={priority}
-                disabled={locked}
-                onChange={(e) => setPriority(Number(e.target.value))}
-                className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-
-            {/* Risk */}
-            <div>
-              <label className="block text-md font-semibold font-medium text-slate-300 mb-3">
-                Penalty Risk
+                Cleaning Done
               </label>
 
               <select
-                value={risk}
+                value={cleaningDone ? "YES" : "NO"}
                 disabled={locked}
-                onChange={(e) => setRisk(e.target.value)}
+                onChange={(e) => setCleaningDone(e.target.value === "YES")}
                 className="w-full rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
               >
-                <option className="bg-white text-black">LOW</option>
-                <option className="bg-white text-black">MEDIUM</option>
-                <option className="bg-white text-black">HIGH</option>
+                <option className="text-white">YES</option>
+
+                <option className="text-white">NO</option>
               </select>
             </div>
 
@@ -242,25 +201,43 @@ export default function BrandingDashboard() {
         </div>
       </Card>
 
-      {/* LOCAL */}
+      {/* LOCAL ENTRIES */}
       <Card title="Pending Local Entries">
         {Object.keys(draftRows).length === 0 ? (
           <Empty text="No pending entries." />
         ) : (
-          <Table
-            headers={["Train", "Priority", "Risk", "Action"]}
-            rows={Object.values(draftRows).map((r) => [
-              r.train_id,
-              r.branding_priority,
-              r.penalty_risk_level,
-              <button
-                onClick={() => deleteRow(r.train_id)}
-                className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700"
-              >
-                Delete
-              </button>,
-            ])}
-          />
+          <div className="overflow-auto">
+            <table className="w-full text-left">
+              <thead className="border-b border-slate-700 text-slate-400">
+                <tr>
+                  <th className="py-2 pr-4">Train</th>
+                  <th className="py-2 pr-4">Cleaning Done</th>
+                  <th className="py-2 pr-4">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {Object.values(draftRows).map((r) => (
+                  <tr key={r.train_id} className="border-b border-slate-800">
+                    <td className="py-2 pr-4">{r.train_id}</td>
+
+                    <td className="py-2 pr-4">
+                      {r.cleaning_done ? "YES" : "NO"}
+                    </td>
+
+                    <td className="py-2 pr-4">
+                      <button
+                        onClick={() => deleteRow(r.train_id)}
+                        className="px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         <button
@@ -272,24 +249,23 @@ export default function BrandingDashboard() {
         </button>
       </Card>
 
-      {/* TODAY */}
+      {/* TODAY DATA */}
       <Card title="Today's Submitted Data">
         {todayRows.length === 0 ? (
           <Empty text="No submitted rows yet." />
         ) : (
           <Table
-            headers={["Train", "Priority", "Risk", "Updated At"]}
+            headers={["Train", "Cleaning Done", "Updated At"]}
             rows={todayRows.map((r) => [
               r.train_id,
-              r.branding_priority,
-              r.penalty_risk_level,
+              r.cleaning_done ? "YES" : "NO",
               r.updated_at,
             ])}
           />
         )}
       </Card>
 
-      {/* PLAN */}
+      {/* FINAL PLAN */}
       <Card title="Finalized Plan">
         {plan.length === 0 ? (
           <Empty text="No finalized plan available." />
@@ -304,9 +280,11 @@ export default function BrandingDashboard() {
   );
 }
 
-/* ===================================== */
+/* =======================================
+COMMON UI
+======================================= */
 
-function Layout({ children }: { children: React.ReactNode }) {
+function Layout({ children }) {
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6">
       <div className="max-w-7xl mx-auto space-y-6">{children}</div>
@@ -314,13 +292,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Card({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Card({ title, children }) {
   return (
     <div className="bg-slate-900 rounded-2xl p-6">
       <h2 className="text-xl font-bold mb-4">{title}</h2>
@@ -329,7 +301,7 @@ function Card({
   );
 }
 
-function Warn({ msg, red }: { msg: string; red?: boolean }) {
+function Warn({ msg, red }) {
   return (
     <div
       className={`rounded-xl p-4 font-semibold ${
@@ -341,24 +313,18 @@ function Warn({ msg, red }: { msg: string; red?: boolean }) {
   );
 }
 
-function Empty({ text }: { text: string }) {
+function Empty({ text }) {
   return <p className="text-slate-400">{text}</p>;
 }
 
-function Table({
-  headers,
-  rows,
-}: {
-  headers: React.ReactNode[];
-  rows: React.ReactNode[][];
-}) {
+function Table({ headers, rows }) {
   return (
     <div className="overflow-auto">
       <table className="w-full text-left">
         <thead className="border-b border-slate-700 text-slate-400">
           <tr>
-            {headers.map((h, i) => (
-              <th key={i} className="py-2 pr-4">
+            {headers.map((h) => (
+              <th key={h} className="py-2 pr-4">
                 {h}
               </th>
             ))}

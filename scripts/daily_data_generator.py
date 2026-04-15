@@ -1,3 +1,4 @@
+import zoneinfo
 import pandas as pd
 import numpy as np
 import os
@@ -113,7 +114,8 @@ def generate_daily_data():
 
                 "shunting_time": shunting_time,
 
-                "risk_label": risk_label
+                "risk_label": risk_label,
+                "created_at": datetime.now(zoneinfo.ZoneInfo("Asia/Kolkata"))
             })
 
     df = pd.DataFrame(records)

@@ -44,6 +44,7 @@ export default function PlannerDashboard() {
     { key: "cleaning_logs", label: "Cleaning" },
     { key: "fitness_logs", label: "Fitness" },
     { key: "branding_logs", label: "Branding" },
+    { key: "mileage_logs", label: "Mileage" },
   ];
 
   const scenarios = [
@@ -256,12 +257,6 @@ ${res.data.ai_summary || ""}
           )}
         </ModalShell>
       )}
-
-      {/* HEADER */}
-      <div className="rounded-3xl bg-gradient-to-r from-cyan-600 via-blue-700 to-indigo-800 p-8 shadow-2xl mb-8">
-        <h1 className="text-4xl font-bold">Planner Dashboard</h1>
-        <p className="text-white/80 mt-2">AI Driven Train Induction Planning</p>
-      </div>
 
       {/* SUMMARY */}
       <Section title="Fleet Readiness Overview">

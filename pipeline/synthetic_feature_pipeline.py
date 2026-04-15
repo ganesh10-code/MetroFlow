@@ -1,3 +1,4 @@
+from numpy import rint
 import pandas as pd
 from sqlalchemy import create_engine, text
 import os
@@ -26,7 +27,7 @@ def table_exists(conn, table_name):
 # ==========================================
 def create_schema_if_needed():
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
 
         required_tables = [
             "master_train_data",
@@ -39,12 +40,14 @@ def create_schema_if_needed():
             "users",
             "plans",
             "plan_details",
+            "plan_versions",
             "synthetic_daily_features",
             "real_daily_features",
             "maintenance_logs",
             "cleaning_logs",
             "fitness_logs",
-            "branding_logs"
+            "branding_logs",
+            "operations_control_room"
         ]
 
         missing = [t for t in required_tables if not table_exists(conn, t)]
@@ -92,9 +95,11 @@ def create_schema_if_needed():
                         branding_priority INT,
                         penalty_risk_level VARCHAR,
                         shunting_time INT,
-                        risk_label INT
+                        risk_label INT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP         
                     );
                 """))
+                print("Created synthetic_daily_features table")
 
             if "real_daily_features" in missing:
                 conn.execute(text("""
@@ -111,10 +116,70 @@ def create_schema_if_needed():
                         branding_priority INT,
                         penalty_risk_level VARCHAR,
                         shunting_time INT,
-                        risk_label INT
+                        risk_label INT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
                 """))
+                print("Created real_daily_features table")
 
+            if "plans" in missing:
+                    conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS plans (
+                        id SERIAL PRIMARY KEY,
+                        date DATE NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        total_trains INT,
+                        maintenance_count INT,
+                        standby_count INT,
+                        run_count INT,
+                        avg_risk_score FLOAT,
+                        CONSTRAINT uq_plans_date
+                        UNIQUE (date)
+                    );"""))
+                    print("Created plans table")
+
+            if "plan_details" in missing:
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS plan_details (
+                    id SERIAL PRIMARY KEY,
+                    plan_id INT NOT NULL,
+                    train_id VARCHAR NOT NULL,
+                    decision VARCHAR
+                    CHECK (
+                        decision IN (
+                            'RUN',
+                            'MAINTENANCE',
+                            'STANDBY'
+                        )
+                    ),
+                    risk_score FLOAT,
+                    priority_score FLOAT,
+                    reason TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (plan_id)
+                    REFERENCES plans(id)
+                    ON DELETE CASCADE,
+                    FOREIGN KEY (train_id)
+                        REFERENCES master_train_data(train_id),
+                    CONSTRAINT uq_plan_details_train
+                    UNIQUE (plan_id, train_id)
+                );"""))
+                print("Created plan_details tables")
+                        
+            if "plan_versions" in missing:
+                        conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS plan_versions (
+                        id SERIAL PRIMARY KEY,
+                        version_type VARCHAR CHECK (
+                        version_type IN ('GENERATED', 'FINALIZED')),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        reference_plan_id INT,
+                        notes TEXT
+                        );"""))
+                        print("Created plan versions table")
+                        
             print("✅ Missing tables created successfully")
 
 
@@ -193,7 +258,8 @@ def load_synthetic_features():
                     branding_priority INT,
                     penalty_risk_level VARCHAR,
                     shunting_time INT,
-                    risk_label INT
+                    risk_label INT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP    
                 );
             """))
 

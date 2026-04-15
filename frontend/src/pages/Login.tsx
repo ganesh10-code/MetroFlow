@@ -1,19 +1,33 @@
 // @ts-nocheck
-import React, { useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { jwtDecode } from 'jwt-decode';
-import { Train, Lock, User, ArrowRight, ArrowLeft, ShieldCheck, Activity, Zap, Sparkles, Fingerprint, ScanLine, Shield, CircuitBoard } from 'lucide-react';
-import api from '../config/axios';
-import { AuthContext } from '../context/AuthContext';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import Card from '../components/ui/Card';
+import React, { useState, useContext, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { jwtDecode } from "jwt-decode";
+import {
+  Train,
+  Lock,
+  User,
+  ArrowRight,
+  ArrowLeft,
+  ShieldCheck,
+  Activity,
+  Zap,
+  Sparkles,
+  Fingerprint,
+  ScanLine,
+  Shield,
+  CircuitBoard,
+} from "lucide-react";
+import api from "../config/axios";
+import { AuthContext } from "../context/AuthContext";
+import Button from "../components/ui/Button";
+import Input from "../components/ui/Input";
+import Card from "../components/ui/Card";
 
 const Login = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const { login } = useContext(AuthContext);
@@ -22,25 +36,37 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-      const res = await api.post('/auth/login', formData, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      formData.append("username", username);
+      formData.append("password", password);
+      const res = await api.post("/auth/login", formData, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
       });
       login(res.data.access_token);
       const decoded: any = jwtDecode(res.data.access_token);
-      const role = decoded.role;
-      if (role === 'ADMIN') navigate('/admin');
-      else if (role === 'PLANNER') navigate('/planner');
-      else if (role === 'MAINTENANCE') navigate('/maintenance');
-      else if (role === 'FITNESS') navigate('/fitness');
-      else if (role === 'BRANDING') navigate('/branding');
-      else navigate('/login');
+      const role = decoded.role?.toUpperCase();
+
+      if (role === "ADMIN") {
+        navigate("/admin");
+      } else if (role === "PLANNER") {
+        navigate("/planner");
+      } else if (role === "MAINTENANCE") {
+        navigate("/maintenance");
+      } else if (role === "FITNESS") {
+        navigate("/fitness");
+      } else if (role === "BRANDING") {
+        navigate("/branding");
+      } else if (role === "CLEANING") {
+        navigate("/cleaning");
+      } else if (role === "OPERATIONS") {
+        navigate("/operations");
+      } else {
+        navigate("/login");
+      }
     } catch {
-      setError('Invalid credentials. Access denied');
+      setError("Invalid credentials. Access denied");
     } finally {
       setLoading(false);
     }
@@ -87,17 +113,24 @@ const Login = () => {
 
       {/* Animated Gradient Orbs */}
       <div className="fixed -top-40 -right-40 w-96 h-96 bg-[#00F2FF]/10 rounded-full blur-[120px] animate-pulse" />
-      <div className="fixed -bottom-40 -left-40 w-96 h-96 bg-[#00D2C8]/10 rounded-full blur-[120px] animate-pulse" style={{ animationDuration: '4s' }} />
+      <div
+        className="fixed -bottom-40 -left-40 w-96 h-96 bg-[#00D2C8]/10 rounded-full blur-[120px] animate-pulse"
+        style={{ animationDuration: "4s" }}
+      />
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#7D7DBE]/5 rounded-full blur-[150px]" />
 
       {/* Left Section: Hero Visual */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden">
         {/* Animated Grid Background */}
         <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'radial-gradient(circle at 2px 2px, rgba(0,242,255,0.2) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
-          }} />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 2px 2px, rgba(0,242,255,0.2) 1px, transparent 1px)",
+              backgroundSize: "40px 40px",
+            }}
+          />
         </div>
 
         <div className="absolute inset-0 bg-gradient-to-r from-[#080B1F] via-[#080B1F]/40 to-transparent z-10" />
@@ -142,7 +175,8 @@ const Login = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 0.6 }}
             >
-              Next-generation intelligent train induction and planning orchestrator with real-time predictive analytics.
+              Next-generation intelligent train induction and planning
+              orchestrator with real-time predictive analytics.
             </motion.p>
 
             {/* Stats Grid */}
@@ -153,14 +187,31 @@ const Login = () => {
               transition={{ delay: 0.7, duration: 0.6 }}
             >
               {[
-                { value: '99.99%', label: 'Predictive Uptime', icon: Activity, color: 'text-green-400' },
-                { value: '&lt; 50ms', label: 'Inference Latency', icon: Zap, color: 'text-[#00F2FF]' },
-                { value: '24/7', label: 'Global Coverage', icon: CircuitBoard, color: 'text-purple-400' },
+                {
+                  value: "99.99%",
+                  label: "Predictive Uptime",
+                  icon: Activity,
+                  color: "text-green-400",
+                },
+                {
+                  value: "&lt; 50ms",
+                  label: "Inference Latency",
+                  icon: Zap,
+                  color: "text-[#00F2FF]",
+                },
+                {
+                  value: "24/7",
+                  label: "Global Coverage",
+                  icon: CircuitBoard,
+                  color: "text-purple-400",
+                },
               ].map((stat, idx) => (
                 <div key={idx} className="space-y-2">
                   <div className="flex items-center gap-2">
                     <stat.icon className={`w-4 h-4 ${stat.color}`} />
-                    <p className="text-2xl font-black text-white">{stat.value}</p>
+                    <p className="text-2xl font-black text-white">
+                      {stat.value}
+                    </p>
                   </div>
                   <p className="text-[9px] font-bold text-[#7D7DBE] uppercase tracking-wider">
                     {stat.label}
@@ -173,7 +224,10 @@ const Login = () => {
 
         {/* Decorative Elements */}
         <div className="absolute bottom-0 right-0 w-64 h-64 bg-gradient-to-tl from-[#00F2FF]/20 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-1/4 right-1/4 w-32 h-32 border border-[#00F2FF]/20 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
+        <div
+          className="absolute top-1/4 right-1/4 w-32 h-32 border border-[#00F2FF]/20 rounded-full animate-ping"
+          style={{ animationDuration: "3s" }}
+        />
       </div>
 
       {/* Right Section: Auth */}
@@ -189,8 +243,12 @@ const Login = () => {
               <Train className="w-6 h-6 text-[#080B1F]" />
             </div>
             <div>
-              <span className="text-xl font-black tracking-tighter text-white">MetroFlow</span>
-              <span className="text-[10px] font-bold text-[#00F2FF] block -mt-1">AI Core</span>
+              <span className="text-xl font-black tracking-tighter text-white">
+                MetroFlow
+              </span>
+              <span className="text-[10px] font-bold text-[#00F2FF] block -mt-1">
+                AI Core
+              </span>
             </div>
           </motion.div>
         </div>
@@ -202,9 +260,9 @@ const Login = () => {
         >
           <div className="w-full max-w-[480px] mx-auto space-y-8">
             {/* Back Button */}
-            <button 
+            <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
               className="group flex items-center gap-2 text-[10px] font-bold text-[#7D7DBE] hover:text-[#00F2FF] transition-colors uppercase tracking-[0.2em]"
             >
               <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
@@ -230,7 +288,10 @@ const Login = () => {
             </div>
 
             {/* Login Card */}
-            <Card variant="premium" className="p-8 border border-[#00F2FF]/10 bg-[#1A1C3D]/30 backdrop-blur-xl relative overflow-hidden group">
+            <Card
+              variant="premium"
+              className="p-8 border border-[#00F2FF]/10 bg-[#1A1C3D]/30 backdrop-blur-xl relative overflow-hidden group"
+            >
               {/* Animated Border Glow */}
               <div className="absolute inset-0 bg-gradient-to-r from-[#00F2FF]/0 via-[#00F2FF]/10 to-[#00F2FF]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 -translate-x-full group-hover:translate-x-full" />
 
@@ -240,7 +301,7 @@ const Login = () => {
                     <motion.div
                       key="error"
                       initial={{ opacity: 0, y: -10, height: 0 }}
-                      animate={{ opacity: 1, y: 0, height: 'auto' }}
+                      animate={{ opacity: 1, y: 0, height: "auto" }}
                       exit={{ opacity: 0, y: -10, height: 0 }}
                       transition={{ duration: 0.3 }}
                     >
@@ -253,7 +314,9 @@ const Login = () => {
                             <p className="text-[11px] font-bold text-red-500 uppercase tracking-wider">
                               Authentication Failed
                             </p>
-                            <p className="text-[10px] text-red-400/80 mt-0.5">{error}</p>
+                            <p className="text-[10px] text-red-400/80 mt-0.5">
+                              {error}
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -267,13 +330,15 @@ const Login = () => {
                       <User className="w-3 h-3" />
                       Station ID / Username
                     </label>
-                    <div className={`relative transition-all duration-300 ${focusedField === 'username' ? 'scale-[1.01]' : ''}`}>
+                    <div
+                      className={`relative transition-all duration-300 ${focusedField === "username" ? "scale-[1.01]" : ""}`}
+                    >
                       <Input
                         placeholder="e.g., admin_node_01"
                         icon={User}
                         value={username}
-                        onChange={e => setUsername(e.target.value)}
-                        onFocus={() => setFocusedField('username')}
+                        onChange={(e) => setUsername(e.target.value)}
+                        onFocus={() => setFocusedField("username")}
                         onBlur={() => setFocusedField(null)}
                         variant="premium"
                         required
@@ -296,14 +361,16 @@ const Login = () => {
                       <Lock className="w-3 h-3" />
                       Security Authentication
                     </label>
-                    <div className={`relative transition-all duration-300 ${focusedField === 'password' ? 'scale-[1.01]' : ''}`}>
+                    <div
+                      className={`relative transition-all duration-300 ${focusedField === "password" ? "scale-[1.01]" : ""}`}
+                    >
                       <Input
                         type="password"
                         placeholder="••••••••"
                         icon={Lock}
                         value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        onFocus={() => setFocusedField('password')}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onFocus={() => setFocusedField("password")}
                         onBlur={() => setFocusedField(null)}
                         variant="premium"
                         required
