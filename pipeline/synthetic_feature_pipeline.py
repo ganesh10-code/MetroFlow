@@ -179,7 +179,18 @@ def create_schema_if_needed():
                         notes TEXT
                         );"""))
                         print("Created plan versions table")
-                        
+
+            if "simulation_logs" in missing:
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS simulation_logs (
+                    id SERIAL PRIMARY KEY,
+                    scenario_name VARCHAR,
+                    created_by VARCHAR,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    remarks TEXT
+                );  """))
+                print("Created simulation_logs table")   
+                    
             print("✅ Missing tables created successfully")
 
 

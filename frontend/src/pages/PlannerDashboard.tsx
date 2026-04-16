@@ -278,17 +278,54 @@ ${res.data.ai_summary || ""}
       </Section>
 
       {/* DEPARTMENTS */}
+      {/* DEPARTMENTS */}
+      {/* DEPARTMENTS */}
+      {/* DEPARTMENTS */}
       <Section title="Department Live Data Status">
         <div className="grid md:grid-cols-3 gap-4">
-          {departments.map((dept) => (
-            <button
-              key={dept.key}
-              onClick={() => loadDept(dept.key, dept.label)}
-              className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 transition"
-            >
-              {loadingDeptKey === dept.key ? "Loading..." : dept.label}
-            </button>
-          ))}
+          {departments.map((dept) => {
+            const received = (summary?.departments_received || []).map((x) =>
+              String(x).toLowerCase().trim(),
+            );
+
+            const complete = (summary?.departments_complete || []).map((x) =>
+              String(x).toLowerCase().trim(),
+            );
+
+            const currentKey = String(dept.key).toLowerCase().trim();
+
+            const isReceived = received.includes(currentKey);
+            const isComplete = complete.includes(currentKey);
+
+            // operations table stores only one row/day
+            const isOperations = currentKey === "operations_control_room";
+
+            let btnClass = "bg-red-600 hover:bg-red-700";
+
+            if (isOperations) {
+              // if today's row exists => green
+              btnClass = isReceived
+                ? "bg-emerald-600 hover:bg-emerald-700"
+                : "bg-red-600 hover:bg-red-700";
+            } else {
+              // other tables need full train data
+              if (isReceived && isComplete) {
+                btnClass = "bg-emerald-600 hover:bg-emerald-700";
+              } else if (isReceived && !isComplete) {
+                btnClass = "bg-amber-500 hover:bg-amber-600";
+              }
+            }
+
+            return (
+              <button
+                key={dept.key}
+                onClick={() => loadDept(dept.key, dept.label)}
+                className={`px-4 py-3 rounded-xl font-semibold shadow-lg transition ${btnClass}`}
+              >
+                {loadingDeptKey === dept.key ? "Loading..." : dept.label}
+              </button>
+            );
+          })}
         </div>
       </Section>
 

@@ -157,17 +157,48 @@ def planner_summary(
 # ==========================================================
 # DEPARTMENT DATA
 # ==========================================================
+# ==========================================================
+# DEPARTMENT DATA (TODAY ONLY + LATEST)
+# ==========================================================
 @planner_router.get("/department-data/{dept}")
 def department_popup(
     dept: str,
+    db: Session = Depends(get_db),
     user=Depends(planner_access)
 ):
-
     try:
-        return get_department_popup_data(dept)
+        today = ist_today()
+
+        allowed = {
+            "operations_control_room",
+            "maintenance_logs",
+            "cleaning_logs",
+            "fitness_logs",
+            "branding_logs",
+            "mileage_logs"
+        }
+
+        if dept not in allowed:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid department"
+            )
+
+        rows = db.execute(text(f"""
+            SELECT *
+            FROM {dept}
+            WHERE log_date = :today
+            ORDER BY id DESC
+            LIMIT 1
+        """), {
+            "today": today
+        }).fetchall()
+
+        return {
+            "rows": [dict(r._mapping) for r in rows]
+        }
 
     except Exception as e:
-
         raise HTTPException(
             status_code=500,
             detail=str(e)
