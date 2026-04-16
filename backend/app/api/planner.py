@@ -11,9 +11,10 @@ from app.api.auth import get_current_active_user
 
 from ml.planner_engine import (
     generate_temp_plan,
-    save_final_plan,
+    generate_temp_plan_bundle,
+    save_current_plan,
     compare_plans,
-    get_department_popup_data
+    save_plan_version,
 )
 
 from app.services.genai_adapter import (
@@ -28,9 +29,10 @@ from zoneinfo import ZoneInfo
 
 IST = ZoneInfo("Asia/Kolkata")
 
-
+def ist_now():
+    return datetime.now(IST)
 def ist_today():
-    return datetime.now(IST).date()
+    return ist_now().date()
 
 planner_router = APIRouter()
 
@@ -71,19 +73,26 @@ def planner_summary(
     user=Depends(planner_access)
 ):
     try:
+        today = ist_today()
+
+        # --------------------------------------------------
+        # TOTAL TRAINS
+        # --------------------------------------------------
         total = db.execute(
             text("SELECT COUNT(*) FROM master_train_data")
         ).scalar()
 
+        total = int(total or 25)
+
+        # --------------------------------------------------
+        # READY / PENDING
+        # --------------------------------------------------
         latest_plan = db.execute(text("""
-            SELECT
-                run_count,
-                standby_count,
-                maintenance_count
+            SELECT run_count, standby_count, maintenance_count, status
             FROM plans
-            ORDER BY created_at DESC
+            WHERE date = :today
             LIMIT 1
-        """)).fetchone()
+        """),{"today": today}).fetchone()
 
         if latest_plan:
             run = int(latest_plan[0] or 0)
@@ -92,74 +101,123 @@ def planner_summary(
 
             ready = run + standby
             pending = maint
+
         else:
             fit = db.execute(text("""
                 SELECT COUNT(*)
-                FROM master_train_data
-                WHERE compliance_status='FIT'
-            """)).scalar()
+                FROM real_daily_features
+                WHERE compliance_status = 'FIT' and 
+                date = :today
+            """),{ "today": today }).scalar()
 
-            ready = fit
-            pending = total - fit
+            ready = int(fit or 0)
+            pending = total - ready
 
-        today = ist_today()
-
-        departments = []
-
+        # --------------------------------------------------
+        # STATUS RULES
+        # OCR = 1 row required
+        # Others = all trains required
+        # --------------------------------------------------
         checks = {
-            "operations_control_room": """
-                SELECT COUNT(*) FROM operations_control_room
-                WHERE log_date=:today
-            """,
-            "maintenance_logs": """
-                SELECT COUNT(*) FROM maintenance_logs
-                WHERE log_date=:today
-            """,
-            "cleaning_logs": """
-                SELECT COUNT(*) FROM cleaning_logs
-                WHERE log_date=:today
-            """,
-            "fitness_logs": """
-                SELECT COUNT(*) FROM fitness_logs
-                WHERE log_date=:today
-            """,
-            "branding_logs": """
-                SELECT COUNT(*) FROM branding_logs
-                WHERE log_date=:today
-            """,
-            "mileage_logs": """
-                SELECT COUNT(*) FROM mileage_logs
-                WHERE log_date=:today
-            """
+            "operations_control_room": {
+                "sql": """
+                    SELECT COUNT(*)
+                    FROM operations_control_room
+                    WHERE log_date = :today
+                """,
+                "required": 1
+            },
+
+            "maintenance_logs": {
+                "sql": """
+                    SELECT COUNT(DISTINCT train_id)
+                    FROM maintenance_logs
+                    WHERE log_date = :today
+                """,
+                "required": total
+            },
+
+            "cleaning_logs": {
+                "sql": """
+                    SELECT COUNT(DISTINCT train_id)
+                    FROM cleaning_logs
+                    WHERE log_date = :today
+                """,
+                "required": total
+            },
+
+            "fitness_logs": {
+                "sql": """
+                    SELECT COUNT(DISTINCT train_id)
+                    FROM fitness_logs
+                    WHERE log_date = :today
+                """,
+                "required": total
+            },
+
+            "branding_logs": {
+                "sql": """
+                    SELECT COUNT(DISTINCT train_id)
+                    FROM branding_logs
+                    WHERE log_date = :today
+                """,
+                "required": total
+            },
+
+            "mileage_logs": {
+                "sql": """
+                    SELECT COUNT(DISTINCT train_id)
+                    FROM mileage_logs
+                    WHERE log_date = :today
+                """,
+                "required": total
+            }
         }
 
-        for key, sql in checks.items():
-            cnt = db.execute(text(sql), {
-                "today": today
-            }).scalar()
+        departments_received = []
+        departments_complete = []
+        departments_missing = []
 
-            if int(cnt or 0) > 0:
-                departments.append(key)
+        for dept, cfg in checks.items():
+
+            cnt = db.execute(
+                text(cfg["sql"]),
+                {"today": today}
+            ).scalar()
+
+            cnt = int(cnt or 0)
+
+            # some data exists today
+            if cnt > 0:
+                departments_received.append(dept)
+
+            # full submission complete
+            if cnt >= cfg["required"]:
+                departments_complete.append(dept)
+            else:
+                departments_missing.append(dept)
 
         return {
             "total_trains": total,
             "ready_for_induction": ready,
             "maintenance_pending": pending,
-            "departments_received": departments,
-            "departments_missing": []
+
+            "departments_received": departments_received,
+            "departments_complete": departments_complete,
+            "departments_missing": departments_missing
         }
 
     except Exception as e:
+        print("summary error:", str(e))
         raise HTTPException(
             status_code=500,
             detail=str(e)
         )
+    
 # ==========================================================
 # DEPARTMENT DATA
 # ==========================================================
-# ==========================================================
-# DEPARTMENT DATA (TODAY ONLY + LATEST)
-# ==========================================================
+
 @planner_router.get("/department-data/{dept}")
 def department_popup(
     dept: str,
@@ -169,6 +227,14 @@ def department_popup(
     try:
         today = ist_today()
 
+        # --------------------------------------------------
+        # FIXED TOTAL FLEET
+        # --------------------------------------------------
+        total_trains = 25
+
+        # --------------------------------------------------
+        # ALLOWED TABLES
+        # --------------------------------------------------
         allowed = {
             "operations_control_room",
             "maintenance_logs",
@@ -184,18 +250,51 @@ def department_popup(
                 detail="Invalid department"
             )
 
+        # --------------------------------------------------
+        # OPERATIONS CONTROL ROOM
+        # only 1 row/day
+        # --------------------------------------------------
+        if dept == "operations_control_room":
+
+            rows = db.execute(text(f"""
+                SELECT *
+                FROM {dept}
+                WHERE log_date = :today
+                ORDER BY id DESC
+                LIMIT 1
+            """), {
+                "today": today
+            }).fetchall()
+
+            count_today = len(rows)
+
+            return {
+                "rows": [dict(r._mapping) for r in rows],
+                "submitted_count": count_today,
+                "required_count": 1,
+                "is_complete": count_today >= 1
+            }
+
+        # --------------------------------------------------
+        # OTHER TABLES
+        # need all 25 trains
+        # --------------------------------------------------
         rows = db.execute(text(f"""
             SELECT *
             FROM {dept}
             WHERE log_date = :today
-            ORDER BY id DESC
-            LIMIT 1
+            ORDER BY train_id
         """), {
             "today": today
         }).fetchall()
 
+        count_today = len(rows)
+
         return {
-            "rows": [dict(r._mapping) for r in rows]
+            "rows": [dict(r._mapping) for r in rows],
+            "submitted_count": count_today,
+            "required_count": total_trains,
+            "is_complete": count_today >= total_trains
         }
 
     except Exception as e:
@@ -204,22 +303,96 @@ def department_popup(
             detail=str(e)
         )
 
+@planner_router.get("/current-plan")
+def current_plan(
+    db: Session = Depends(get_db),
+    user=Depends(planner_access)
+):
+    today = ist_today()
+
+    plan = db.execute(text("""
+        SELECT id, status
+        FROM plans
+        WHERE date = :today
+        LIMIT 1
+    """), {
+        "today": today
+    }).fetchone()
+
+    if not plan:
+        return {
+            "exists": False
+        }
+
+    plan_id = plan[0]
+    status = plan[1]
+
+    rows = db.execute(text("""
+        SELECT
+            train_id,
+            decision,
+            risk_score,
+            priority_score,
+            reason
+        FROM plan_details
+        WHERE plan_id = :pid
+        ORDER BY train_id
+    """), {
+        "pid": plan_id
+    }).fetchall()
+
+    return {
+        "exists": True,
+        "status": status,
+        "details": [dict(r._mapping) for r in rows]
+    }
 
 # ==========================================================
 # GENERATE PLAN
 # ==========================================================
 @planner_router.post("/generate-plan")
 def generate_plan(
+    db: Session = Depends(get_db),
     user=Depends(planner_access)
 ):
 
     try:
 
-        df = generate_temp_plan()
+        today = ist_today()
 
-        rows = df.to_dict(
-            orient="records"
-        )
+        # -----------------------------------
+        # CHECK IF TODAY FINALIZED
+        # -----------------------------------
+        row = db.execute(text("""
+            SELECT id
+            FROM plan_versions
+            WHERE version_type = 'FINALIZED'
+            AND DATE(created_at) = :today
+            LIMIT 1
+        """), {
+            "today": today
+        }).fetchone()
+
+        # -----------------------------------
+        # BLOCK PLANNER ONLY
+        # -----------------------------------
+        if row and user.role == "PLANNER":
+            raise HTTPException(
+                status_code=400,
+                detail="Today's plan already finalized. Only ADMIN can regenerate."
+            )
+
+        # -----------------------------------
+        # GENERATE PLAN
+        # -----------------------------------
+
+        result = generate_temp_plan_bundle()
+
+        df = result["plan_df"]
+        source_df = result["source_df"]
+        targets = result["targets"]
+        rows = df.to_dict(orient="records")
+        source_rows = source_df.to_dict(orient="records")
 
         run = int(
             (df["decision"] == "RUN").sum()
@@ -241,15 +414,21 @@ def generate_plan(
                 "maintenance": maint
             },
             "ai_summary":
-                generate_plan_explanation(rows)
+                generate_plan_explanation(
+                    rows,
+                    source_rows,
+                    targets
+            )
         }
 
-    except Exception as e:
+    except HTTPException:
+        raise
 
+    except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Plan generation failed: {str(e)}"
-        )
+        status_code=500,
+        detail=f"Plan generation failed: {str(e)}"
+    )
 
 
 # ==========================================================
@@ -263,6 +442,8 @@ def what_if(
 ):
 
     try:
+
+        now = ist_now().strftime("%Y-%m-%d %H:%M:%S")
 
         allowed = [
             "TRAIN_FAILURE",
@@ -284,28 +465,6 @@ def what_if(
             )
 
         # ---------------------------------
-        # STORE SIMULATION LOG
-        # ---------------------------------
-        db.execute(text("""
-            INSERT INTO simulation_logs(
-                scenario_name,
-                created_by,
-                remarks
-            )
-            VALUES(
-                :scenario,
-                :user,
-                :remarks
-            )
-        """), {
-            "scenario": scenario,
-            "user": user.username,
-            "remarks": f"Train: {payload.train_id or 'ALL'}"
-        })
-
-        db.commit()
-
-        # ---------------------------------
         # RUN SIMULATION
         # ---------------------------------
         df = generate_temp_plan({
@@ -319,6 +478,44 @@ def what_if(
         standby = int((df["decision"] == "STANDBY").sum())
         maint = int((df["decision"] == "MAINTENANCE").sum())
 
+        simulation_explanation = generate_simulation_explanation(
+            rows,
+            scenario,
+            {
+                 "selected_train": payload.train_id,
+                "requested_by": user.username,
+                "time": now
+            }
+        )
+
+                # ---------------------------------
+        # STORE SIMULATION LOG
+        # ---------------------------------
+        db.execute(text("""
+            INSERT INTO simulation_logs(
+                train_id,
+                scenario_name,
+                created_by,
+                created_at,
+                explanation
+            )
+            VALUES(
+                :t_id,
+                :scenario,
+                :user,
+                :now,
+                :explanation
+            )
+        """), {
+            "t_id": f"Train: {payload.train_id or 'ALL'}",
+            "scenario": scenario,
+            "user": user.username,
+            "now": now,
+            "explanation": simulation_explanation
+        })
+
+        db.commit()
+
         return {
             "details": rows,
             "counts": {
@@ -326,11 +523,8 @@ def what_if(
                 "standby": standby,
                 "maintenance": maint
             },
-            "ai_summary":
-                generate_simulation_explanation(
-                    rows,
-                    scenario
-                )
+            "ai_summary": simulation_explanation
+                
         }
 
     except HTTPException:
@@ -363,7 +557,13 @@ def finalize_plan(
             payload.final_rows
         )
 
-        plan_id = save_final_plan(df)
+        plan_id = save_current_plan(df,"FINALIZED")
+        save_plan_version(
+            "FINALIZED",
+            payload.final_rows,
+            f"Finalized by {user.username}",
+            plan_id
+        )
 
         return {
             "message":
@@ -371,7 +571,12 @@ def finalize_plan(
             "plan_id": plan_id,
             "ai_summary":
                 generate_override_explanation(
-                    payload.final_rows
+                    payload.final_rows,
+                    {
+                        "planner": user.username,
+                        "role": user.role,
+                        "timestamp": ist_now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
                 )
         }
 

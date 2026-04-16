@@ -119,12 +119,6 @@ async def lifespan(app: FastAPI):
         load_synthetic_features()       # 🔥 DB (IMPORTANT)
 
         # ============================================================
-        # 5️⃣ Real Data Aggregation
-        # ============================================================
-        print("📊 Generating real daily features...")
-        generate_real_daily_features()
-
-        # ============================================================
         # 6️⃣ ML Training (SMART)
         # ============================================================
         print("🤖 Training model (if needed)...")

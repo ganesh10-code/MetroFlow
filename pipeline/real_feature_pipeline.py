@@ -156,8 +156,13 @@ def generate_real_daily_features():
 
     print("📊 Generating REAL daily features...")
 
-    today = ist_today()
+    # -----------------------------------------------------
+    # FORCE SAME STRING FORMAT IN IST
+    # YYYY-MM-DD HH:MM:SS
+    # -----------------------------------------------------
     now = ist_now()
+    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    today = now.date()
 
     with engine.begin() as conn:
 
@@ -344,10 +349,7 @@ def generate_real_daily_features():
 
             # -------------------------------------------------
             # DYNAMIC SHUNTING TIME
-            # Formula:
-            # estimated + congestion + maintenance
             # -------------------------------------------------
-
             congestion_count = conn.execute(text("""
                 SELECT COUNT(*)
                 FROM master_train_data
@@ -392,6 +394,7 @@ def generate_real_daily_features():
 
             # -------------------------------------------------
             # UPSERT INTO real_daily_features
+            # STORE SAME FORMAT IN IST
             # -------------------------------------------------
             conn.execute(text("""
                 INSERT INTO real_daily_features(
@@ -454,8 +457,8 @@ def generate_real_daily_features():
                 "penalty_risk_level": penalty_risk_level,
                 "shunting_time": final_shunting_time,
                 "risk_label": risk_label,
-                "created_at": now,
-                "updated_at": now
+                "created_at": now_str,
+                "updated_at": now_str
             })
 
             total_rows += 1

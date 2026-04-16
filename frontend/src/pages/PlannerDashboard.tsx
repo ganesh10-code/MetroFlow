@@ -1,9 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "../config/axios";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 
 export default function PlannerDashboard() {
   const [summary, setSummary] = useState(null);
-
+  const [userRole, setUserRole] = useState("");
   const [planRows, setPlanRows] = useState([]);
   const [originalRows, setOriginalRows] = useState([]);
 
@@ -21,6 +30,7 @@ export default function PlannerDashboard() {
   const [selectedTrain, setSelectedTrain] = useState("");
   const [selectedDecision, setSelectedDecision] = useState("RUN");
 
+  const [planStatus, setPlanStatus] = useState("");
   const [planExplanation, setPlanExplanation] = useState("");
   const [simulationExplanation, setSimulationExplanation] = useState("");
   const [finalExplanation, setFinalExplanation] = useState("");
@@ -29,6 +39,8 @@ export default function PlannerDashboard() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalContent, setModalContent] = useState("");
+  const [compareModal, setCompareModal] = useState(false);
+  const [compareData, setCompareData] = useState(null);
 
   const [deptModal, setDeptModal] = useState(false);
   const [deptRows, setDeptRows] = useState([]);
@@ -36,6 +48,9 @@ export default function PlannerDashboard() {
 
   useEffect(() => {
     loadSummary();
+    loadCurrentPlan();
+    const role = localStorage.getItem("role") || "";
+    setUserRole(role.toUpperCase());
   }, []);
 
   const departments = [
@@ -78,6 +93,20 @@ export default function PlannerDashboard() {
       toast("Failed loading summary");
     } finally {
       setLoadingSummary(false);
+    }
+  };
+
+  const loadCurrentPlan = async () => {
+    try {
+      const res = await api.get("/planner/current-plan");
+
+      if (res.data.exists) {
+        setPlanStatus(res.data.status || "");
+        setPlanRows(res.data.details || []);
+        setOriginalRows(res.data.details || []);
+      }
+    } catch (err) {
+      console.log("No current plan");
     }
   };
 
@@ -173,6 +202,7 @@ export default function PlannerDashboard() {
 
       // refresh cards immediately
       await loadSummary();
+      await loadCurrentPlan();
 
       toast("Plan finalized");
     } catch (err) {
@@ -193,25 +223,8 @@ export default function PlannerDashboard() {
       });
 
       setCompareExplanation(res.data.ai_summary || "");
-
-      const text = `
-Generated RUN: ${res.data.generated_run}
-Final RUN: ${res.data.final_run}
-
-Generated STANDBY: ${res.data.generated_standby}
-Final STANDBY: ${res.data.final_standby}
-
-Override Changes: ${res.data.override_changes}
-
-Avg Risk Generated: ${res.data.avg_risk_generated}
-Avg Risk Final: ${res.data.avg_risk_final}
-
-AI Summary:
-
-${res.data.ai_summary || ""}
-`;
-
-      openModal("Plan Comparison", text);
+      setCompareData(res.data);
+      setCompareModal(true);
     } catch (err) {
       const msg = err?.response?.data?.detail || "Compare failed";
       toast(msg);
@@ -230,6 +243,8 @@ ${res.data.ai_summary || ""}
     return { run, standby, maint };
   }, [planRows]);
 
+  const isPlannerLocked = userRole === "PLANNER" && planStatus === "FINALIZED";
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white p-6">
       {message && (
@@ -244,6 +259,15 @@ ${res.data.ai_summary || ""}
           <pre className="whitespace-pre-wrap text-slate-300 leading-7 font-sans">
             {modalContent}
           </pre>
+        </ModalShell>
+      )}
+
+      {compareModal && compareData && (
+        <ModalShell
+          title="Visual Plan Comparison"
+          onClose={() => setCompareModal(false)}
+        >
+          <CompareDashboard data={compareData} />
         </ModalShell>
       )}
 
@@ -278,9 +302,7 @@ ${res.data.ai_summary || ""}
       </Section>
 
       {/* DEPARTMENTS */}
-      {/* DEPARTMENTS */}
-      {/* DEPARTMENTS */}
-      {/* DEPARTMENTS */}
+
       <Section title="Department Live Data Status">
         <div className="grid md:grid-cols-3 gap-4">
           {departments.map((dept) => {
@@ -297,23 +319,20 @@ ${res.data.ai_summary || ""}
             const isReceived = received.includes(currentKey);
             const isComplete = complete.includes(currentKey);
 
-            // operations table stores only one row/day
-            const isOperations = currentKey === "operations_control_room";
+            let btnClass = "";
 
-            let btnClass = "bg-red-600 hover:bg-red-700";
-
-            if (isOperations) {
-              // if today's row exists => green
-              btnClass = isReceived
-                ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-red-600 hover:bg-red-700";
+            // -----------------------------------
+            // COLOR RULES
+            // Green  = complete data available
+            // Orange = partial / missing exists
+            // Red    = no data today
+            // -----------------------------------
+            if (isComplete) {
+              btnClass = "bg-emerald-600 hover:bg-emerald-700";
+            } else if (isReceived && !isComplete) {
+              btnClass = "bg-orange-500 hover:bg-orange-600";
             } else {
-              // other tables need full train data
-              if (isReceived && isComplete) {
-                btnClass = "bg-emerald-600 hover:bg-emerald-700";
-              } else if (isReceived && !isComplete) {
-                btnClass = "bg-amber-500 hover:bg-amber-600";
-              }
+              btnClass = "bg-red-600 hover:bg-red-700";
             }
 
             return (
@@ -332,29 +351,64 @@ ${res.data.ai_summary || ""}
       {/* GENERATE */}
       <Section title="Generate Plan">
         <p className="text-slate-400 mb-4">
-          RUN/STANDBY counts are controlled by Operations Control Room. Baseline
-          is used automatically if not set.
+          Plan is generated using daily data from all department log tables and
+          used synthetic data incase of missing daily data. The AI model
+          considers various factors to assign a decision (RUN / STANDBY /
+          MAINTENANCE) to each train, along with risk and priority scores.
         </p>
 
         <button
           onClick={generatePlan}
-          disabled={loadingGenerate}
-          className="px-6 py-3 rounded-xl bg-cyan-600 hover:bg-cyan-700"
+          disabled={loadingGenerate || isPlannerLocked}
+          className={`px-6 py-3 rounded-xl ${
+            isPlannerLocked
+              ? "bg-slate-600 cursor-not-allowed"
+              : "bg-cyan-600 hover:bg-cyan-700"
+          }`}
         >
-          {loadingGenerate ? "Generating..." : "Generate AI Plan"}
+          {loadingGenerate
+            ? "Generating..."
+            : isPlannerLocked
+              ? "Locked After Finalization"
+              : "Generate AI Plan"}
         </button>
 
-        {planExplanation && (
+        {isPlannerLocked && (
+          <p className="mt-3 text-red-300 text-sm">
+            Today's plan is finalized. Only ADMIN can regenerate.
+          </p>
+        )}
+
+        {planRows.length > 0 && (
           <div className="mt-4">
             <button
-              onClick={() => openModal("Plan Explanation", planExplanation)}
-              className="px-4 py-2 rounded-xl bg-indigo-600"
+              onClick={() =>
+                openModal(
+                  "Plan Explanation",
+                  planExplanation || "AI explanation not available.",
+                )
+              }
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700"
             >
-              View Explanation
+              View Initial Plan Explanation
             </button>
           </div>
         )}
       </Section>
+      <div className="flex">
+        Current Plan Status:&nbsp;
+        {planStatus && (
+          <p
+            className={
+              planStatus === "GENERATED"
+                ? "mb-3 text-amber-300 font-semibold"
+                : "mb-3 text-emerald-500 font-semibold"
+            }
+          >
+            {planStatus}
+          </p>
+        )}
+      </div>
 
       {/* PLAN TABLE */}
       {planRows.length > 0 && (
@@ -657,6 +711,95 @@ function DataTable({ rows }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function CompareDashboard({ data }) {
+  const chartData = [
+    {
+      name: "RUN",
+      Generated: data.generated_run,
+      Final: data.final_run,
+    },
+    {
+      name: "STANDBY",
+      Generated: data.generated_standby,
+      Final: data.final_standby,
+    },
+    {
+      name: "MAINT",
+      Generated: data.generated_maintenance,
+      Final: data.final_maintenance,
+    },
+  ];
+
+  const riskBetter = data.risk_delta < 0;
+
+  return (
+    <div className="space-y-6">
+      {/* KPI CARDS */}
+      <div className="grid md:grid-cols-4 gap-4">
+        <MiniCard title="Risk Change" value={`${data.risk_delta_pct}%`} />
+
+        <MiniCard title="Overrides" value={data.override_changes} />
+
+        <MiniCard
+          title="RUN Delta"
+          value={data.final_run - data.generated_run}
+        />
+
+        <MiniCard
+          title="Safety"
+          value={riskBetter ? "Improved" : "Higher Risk"}
+        />
+      </div>
+
+      {/* BAR CHART */}
+      <div className="h-80 bg-white/5 rounded-2xl p-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData}>
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="Generated" />
+            <Bar dataKey="Final" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* RISK */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <MiniCard title="Generated Risk" value={data.avg_risk_generated} />
+        <MiniCard title="Final Risk" value={data.avg_risk_final} />
+      </div>
+
+      {/* CHANGED TRAINS */}
+      <div className="rounded-2xl bg-white/5 p-4">
+        <h3 className="font-bold text-cyan-300 mb-3">Changed Trains</h3>
+
+        <div className="flex flex-wrap gap-2">
+          {(data.changed_trains || []).length > 0 ? (
+            data.changed_trains.map((x) => (
+              <span key={x} className="px-3 py-1 rounded-full bg-purple-600">
+                {x}
+              </span>
+            ))
+          ) : (
+            <p className="text-slate-400">No train changes</p>
+          )}
+        </div>
+      </div>
+
+      {/* AI SUMMARY */}
+      <div className="rounded-2xl bg-white/5 p-4">
+        <h3 className="font-bold text-cyan-300 mb-3">AI Executive Summary</h3>
+
+        <p className="whitespace-pre-wrap text-slate-300 leading-7">
+          {data.ai_summary}
+        </p>
+      </div>
     </div>
   );
 }

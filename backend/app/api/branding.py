@@ -144,7 +144,7 @@ def submit_today(
         )
 
     today = ist_today()
-    now = db_timestamp()
+    now = ist_now().strftime("%Y-%m-%d %H:%M:%S")
 
     # lock after finalize
     lock = db.execute(text("""
@@ -207,7 +207,7 @@ def submit_today(
             DO UPDATE SET
                 branding_priority = EXCLUDED.branding_priority,
                 penalty_risk_level = EXCLUDED.penalty_risk_level,
-                updated_at = EXCLUDED.updated_at
+                updated_at = :updated_at
         """), {
             "log_date": today,
             "train_id": row.train_id,

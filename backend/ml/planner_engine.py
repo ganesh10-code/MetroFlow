@@ -189,7 +189,7 @@ def fetch_latest_planning_data():
                 "today": today
             })
         
-        load_synthetic_features
+        load_synthetic_features()
 
         cnt = conn.execute(text("""
         SELECT COUNT(*)
@@ -210,51 +210,6 @@ def fetch_latest_planning_data():
         })
 
     raise Exception("No planning data available")
-
-# ==========================================================
-# POPUP TABLES
-# ==========================================================
-def get_department_popup_data(dept):
-
-    mapping = {
-        "maintenance_logs": "maintenance_logs",
-        "cleaning_logs": "cleaning_logs",
-        "fitness_logs": "fitness_logs",
-        "branding_logs": "branding_logs",
-        "operations_control_room": "operations_control_room",
-        "mileage_logs": "mileage_logs"
-    }
-
-    table = mapping.get(dept.lower())
-
-    if not table:
-        return {"department": dept, "rows": []}
-
-    with engine.begin() as conn:
-
-        try:
-            df = pd.read_sql(
-                f"""
-                SELECT *
-                FROM {table}
-                ORDER BY id DESC
-                LIMIT 100
-                """,
-                conn
-            )
-
-            return {
-                "department": dept,
-                "rows": df.to_dict(
-                    orient="records"
-                )
-            }
-
-        except Exception:
-            return {
-                "department": dept,
-                "rows": []
-            }
 
 
 # ==========================================================
@@ -464,7 +419,8 @@ def optimize_plan(
 def save_plan_version(
     version_type,
     rows,
-    notes=None
+    notes=None,
+    reference_plan_id=None
 ):
 
     payload = {
@@ -472,19 +428,27 @@ def save_plan_version(
         "rows": rows
     }
 
+    now = ist_now().strftime("%Y-%m-%d %H:%M:%S")
+
     with engine.begin() as conn:
 
         conn.execute(text("""
             INSERT INTO plan_versions(
                 version_type,
+                created_at,
+                reference_plan_id,
                 notes
             )
             VALUES(
                 :v,
+                :c,
+                :pid,
                 :n
             )
         """), {
             "v": version_type,
+            "c": now,
+            "pid": reference_plan_id,
             "n": json.dumps(
                 payload,
                 default=str
@@ -557,26 +521,118 @@ def generate_temp_plan(config=None):
         save_plan_version(
             "SIMULATION",
             rows,
-            config.get("scenario")
+            config.get("scenario"),
+            None
         )
     else:
+        plan_id = save_current_plan(df, "GENERATED")
         save_plan_version(
             "GENERATED",
             rows,
-            "Initial generated plan"
+            "Initial generated plan",
+            plan_id
         )
+
 
     return df
 
 
-# ==========================================================
-# SAVE FINAL
-# ==========================================================
-# REPLACE EXISTING save_final_plan()
+def generate_temp_plan_bundle(config=None):
 
-def save_final_plan(df):
+    source_df = fetch_latest_planning_data()
 
-    today = str(df["date"].iloc[0])
+    df = source_df.copy()
+
+    df = prepare_features(df)
+
+    model = load_model()
+
+    X = df[
+        [
+            "open_jobs",
+            "mileage_today",
+            "branding_priority",
+            "shunting_time",
+            "job_severity_score",
+            "mileage_ratio"
+        ]
+    ]
+
+    df["risk_score"] = model.predict_proba(X)[:, 1]
+
+    df = apply_simulation(df, config)
+
+    total = len(df)
+
+    run_count, standby_count, maint_count = get_ocr_counts(total)
+
+    if config and config.get("scenario") == "PEAK_HOUR":
+        run_count += 2
+        maint_count = max(
+            0,
+            total - run_count - standby_count
+        )
+
+    if config and config.get("scenario") == "STAFF_SHORTAGE":
+        run_count = max(1, run_count - 3)
+        maint_count = max(
+            0,
+            total - run_count - standby_count
+        )
+
+    df = optimize_plan(
+        df,
+        run_count,
+        standby_count,
+        maint_count
+    )
+
+    df["override_flag"] = False
+
+    rows = df.to_dict(orient="records")
+
+    if config:
+        save_plan_version(
+            "SIMULATION",
+            rows,
+            config.get("scenario"),
+            None
+        )
+    else:
+        plan_id = save_current_plan(df, "GENERATED")
+
+        save_plan_version(
+            "GENERATED",
+            rows,
+            "Initial generated plan",
+            plan_id
+        )
+
+    return {
+        "plan_df": df,
+        "source_df": source_df,
+        "targets": {
+            "run": run_count,
+            "standby": standby_count,
+            "maintenance": maint_count
+        }
+    }
+
+# ==========================================================
+# SAVE CURRENT FINAL
+# ==========================================================
+
+
+def save_current_plan(df, status):
+
+    if "date" in df.columns:
+        today = str(df["date"].iloc[0])
+    elif "log_date" in df.columns:
+        today = str(df["log_date"].iloc[0])
+    else:
+        today = str(ist_today())
+
+    now = ist_now().strftime("%Y-%m-%d %H:%M:%S")
 
     with engine.begin() as conn:
 
@@ -586,6 +642,7 @@ def save_final_plan(df):
         conn.execute(text("""
             INSERT INTO plans(
                 date,
+                status,
                 total_trains,
                 maintenance_count,
                 standby_count,
@@ -595,27 +652,36 @@ def save_final_plan(df):
                 updated_at
             )
             VALUES(
-                :date,:total,:m,:s,:r,:avg,
-                CURRENT_TIMESTAMP,
-                CURRENT_TIMESTAMP
+                :date,
+                :status,
+                :total,
+                :m,
+                :s,
+                :r,
+                :avg,
+                :now,
+                :now
             )
 
             ON CONFLICT (date)
 
             DO UPDATE SET
+                status = EXCLUDED.status,
                 total_trains = EXCLUDED.total_trains,
                 maintenance_count = EXCLUDED.maintenance_count,
                 standby_count = EXCLUDED.standby_count,
                 run_count = EXCLUDED.run_count,
                 avg_risk_score = EXCLUDED.avg_risk_score,
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = :now
         """), {
             "date": today,
+            "status": status,
             "total": int(len(df)),
             "m": int((df["decision"] == "MAINTENANCE").sum()),
             "s": int((df["decision"] == "STANDBY").sum()),
             "r": int((df["decision"] == "RUN").sum()),
-            "avg": float(df["risk_score"].mean())
+            "avg": float(df["risk_score"].mean()),
+            "now": now
         })
 
         # -----------------------------------
@@ -647,8 +713,8 @@ def save_final_plan(df):
                 )
                 VALUES(
                     :pid,:tid,:d,:r,:p,:reason,
-                    CURRENT_TIMESTAMP,
-                    CURRENT_TIMESTAMP
+                    :now,
+                    :now
                 )
 
                 ON CONFLICT (plan_id, train_id)
@@ -658,72 +724,105 @@ def save_final_plan(df):
                     risk_score = EXCLUDED.risk_score,
                     priority_score = EXCLUDED.priority_score,
                     reason = EXCLUDED.reason,
-                    updated_at = CURRENT_TIMESTAMP
+                    updated_at = :now
             """), {
                 "pid": pid,
                 "tid": str(row["train_id"]),
                 "d": str(row["decision"]),
                 "r": float(row["risk_score"]),
                 "p": float(row["priority_score"]),
+                "now": now,
                 "reason":
                     "Manual Override"
                     if row["override_flag"]
                     else "Optimizer"
             })
 
-    save_plan_version(
-        "FINALIZED",
-        df.to_dict(orient="records"),
-        "Final approved plan"
-    )
-
     return pid
 
 # ==========================================================
 # COMPARE
 # ==========================================================
-def compare_plans(
-    original_rows,
-    final_rows
-):
+def compare_plans(original_rows, final_rows):
 
     o = pd.DataFrame(original_rows)
     f = pd.DataFrame(final_rows)
 
+    generated_run = int((o["decision"] == "RUN").sum())
+    final_run = int((f["decision"] == "RUN").sum())
+
+    generated_standby = int((o["decision"] == "STANDBY").sum())
+    final_standby = int((f["decision"] == "STANDBY").sum())
+
+    generated_maint = int((o["decision"] == "MAINTENANCE").sum())
+    final_maint = int((f["decision"] == "MAINTENANCE").sum())
+
+    weights = {
+        "RUN": 1.0,
+        "STANDBY": 0.5,
+        "MAINTENANCE": 0.1
+    }
+
+    o["weight"] = o["decision"].map(weights).fillna(1)
+    f["weight"] = f["decision"].map(weights).fillna(1)
+
+    avg_risk_generated = round(
+        float((o["risk_score"] * o["weight"]).sum() / len(o)),
+        3
+    )
+
+    avg_risk_final = round(
+        float((f["risk_score"] * f["weight"]).sum() / len(f)),
+        3
+    )
+
+    risk_delta = round(
+        avg_risk_final - avg_risk_generated,
+        3
+    )
+
+    risk_delta_pct = round(
+        ((risk_delta / avg_risk_generated) * 100)
+        if avg_risk_generated > 0 else 0,
+        2
+    )
+
+    changed = o.merge(
+        f,
+        on="train_id",
+        suffixes=("_old", "_new")
+    )
+
+    changed_rows = changed[
+        changed["decision_old"] != changed["decision_new"]
+    ]
+
+    changed_trains = changed_rows["train_id"].tolist()
+
     return {
-        "generated_run":
-            int(
-                (o["decision"] == "RUN").sum()
-            ),
-        "final_run":
-            int(
-                (f["decision"] == "RUN").sum()
-            ),
-        "generated_standby":
-            int(
-                (o["decision"] == "STANDBY").sum()
-            ),
-        "final_standby":
-            int(
-                (f["decision"] == "STANDBY").sum()
-            ),
-        "override_changes":
-            int(
-                (o["decision"]
-                 != f["decision"]).sum()
-            ),
-        "avg_risk_generated":
-            round(
-                float(
-                    o["risk_score"].mean()
-                ),
-                2
-            ),
-        "avg_risk_final":
-            round(
-                float(
-                    f["risk_score"].mean()
-                ),
-                2
-            )
+        "generated_run": generated_run,
+        "final_run": final_run,
+
+        "generated_standby": generated_standby,
+        "final_standby": final_standby,
+
+        "generated_maintenance": generated_maint,
+        "final_maintenance": final_maint,
+
+        "override_changes": len(changed_rows),
+
+        "avg_risk_generated": avg_risk_generated,
+        "avg_risk_final": avg_risk_final,
+
+        "risk_delta": risk_delta,
+        "risk_delta_pct": risk_delta_pct,
+
+        "risk_direction":
+            "DECREASED"
+            if risk_delta < 0
+            else "INCREASED"
+            if risk_delta > 0
+            else "UNCHANGED",
+
+        "changed_trains": changed_trains
     }

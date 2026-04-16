@@ -240,37 +240,44 @@ def fallback_compare(data):
 # ==========================================================
 # PLAN EXPLANATION
 # ==========================================================
-def generate_plan_explanation(rows):
+def generate_plan_explanation(
+    rows,
+    source_rows,
+    targets
+):
 
     d = get_counts(rows)
 
     prompt = f"""
-You are an expert metro operations planner AI.
+You are an expert metro rail fleet planning AI.
 
-Daily planning data summary:
+Today's operational targets:
+RUN={targets["run"]}
+STANDBY={targets["standby"]}
+MAINTENANCE={targets["maintenance"]}
 
-RUN trains: {d["run"]}
-STANDBY trains: {d["standby"]}
-MAINTENANCE trains: {d["maint"]}
+Generated Plan Summary:
+{json.dumps(get_counts(rows), indent=2, default=str)}
 
-Average risk: {d["avg_risk"]}
-Average priority: {d["avg_priority"]}
+Daily Source Operational Data:
+{json.dumps(source_rows[:10], indent=2, default=str)}
 
-Total open jobs: {d["open_jobs"]}
-Cleaning pending trains: {d["clean_pending"]}
-Compliance failures: {d["fit_failures"]}
-High branding priority trains: {d["branding_high"]}
+Analyze the generated plan deeply.
 
 Explain clearly:
 
-1. Why RUN trains were chosen
-2. Why standby reserve count was kept
-3. Why trains were sent to maintenance
-4. How open jobs / cleaning / compliance impacted decisions
-5. How reliability was balanced
+1. Why certain trains were chosen for RUN
+2. Why some trains moved to MAINTENANCE
+3. Safety risks detected (jobs, non-fit, cleaning)
+4. How branding / business priorities influenced allocation
+5. Whether OCR targets were achieved
+6. Overall fleet readiness today
+7. Key operational concerns planners should watch
 
-Professional tone.
-Max 180 words.
+Use professional tone.
+Use bullet points.
+Use specific examples.
+Max 250 words.
 """
 
     return ask_llm(prompt) or fallback_plan(rows)
@@ -281,89 +288,136 @@ Max 180 words.
 # ==========================================================
 def generate_simulation_explanation(
     rows,
-    scenario
+    scenario,
+    context=None
 ):
 
     d = get_counts(rows)
 
+    extra = json.dumps(context, indent=2, default=str) if context else "None"
+
     prompt = f"""
-You are metro scenario planning AI.
+You are an expert metro operations scenario planning AI.
 
-Scenario simulated: {scenario}
+Scenario Tested:
+{scenario}
 
-Results:
-
+Simulation Outcome:
 RUN={d["run"]}
 STANDBY={d["standby"]}
 MAINTENANCE={d["maint"]}
-Average risk={d["avg_risk"]}
+Average Risk={d["avg_risk"]}
 
-Operational data:
-Open jobs={d["open_jobs"]}
-Cleaning pending={d["clean_pending"]}
-Compliance failures={d["fit_failures"]}
+Operational Signals:
+Open Jobs={d["open_jobs"]}
+Cleaning Pending={d["clean_pending"]}
+Compliance Failures={d["fit_failures"]}
 
-Explain:
+Additional Context:
+{extra}
 
-1. What changed due to this scenario
-2. Why train allocation shifted
-3. Operational impact
-4. Risk mitigation logic
+Provide a professional scenario assessment.
 
-Max 180 words.
+Explain clearly:
+
+1. What operational changes occurred because of this scenario
+2. Why trains were reallocated
+3. Capacity impact on passenger service
+4. Safety / reliability impact
+5. Whether standby reserve is sufficient
+6. Immediate mitigation actions planners should take
+7. Overall recommendation: acceptable / caution / critical
+
+Use bullet points.
+Use quantified insights.
+Use executive tone.
+Max 220 words.
 """
 
-    return ask_llm(prompt) or fallback_simulation(
-        rows,
-        scenario
-    )
-
+    return ask_llm(prompt) or fallback_simulation(rows, scenario)
 
 # ==========================================================
 # FINALIZE
 # ==========================================================
-def generate_override_explanation(rows):
+def generate_override_explanation(
+    rows,
+    context=None
+):
 
-    changed = len([
+    changed_rows = [
         x for x in rows
         if x.get("override_flag")
-    ])
+    ]
+
+    changed = len(changed_rows)
+
+    changed_trains = [
+        x.get("train_id")
+        for x in changed_rows
+    ]
+
+    extra = json.dumps(context, indent=2, default=str) if context else "None"
 
     prompt = f"""
-Human planners changed {changed} train decisions.
+You are an expert metro operations approval AI.
 
-Explain:
+Human planners finalized the AI plan with manual overrides.
 
-1. Why overrides may be required
-2. Human judgement benefits
-3. Risks after overrides
-4. Operational safeguards
+Overrides Applied:
+{changed}
 
-Max 170 words.
+Changed Trains:
+{changed_trains}
+
+Additional Context:
+{extra}
+
+Explain professionally:
+
+1. Why human overrides are sometimes necessary
+2. Likely operational reasons for these overrides
+   (maintenance urgency, crowd demand, branding, reserve policy, field reality)
+3. Whether overrides likely improved service or increased risk
+4. Key safeguards required after overrides
+5. Final readiness confidence level: High / Medium / Low
+
+Use bullet points.
+Use realistic railway operations language.
+Use concise executive tone.
+Max 220 words.
 """
 
     return ask_llm(prompt) or fallback_override(rows)
 
-
 # ==========================================================
 # COMPARE
 # ==========================================================
-def generate_comparison_explanation(data):
+def generate_comparison_explanation(result):
 
     prompt = f"""
-Compare generated plan and finalized plan.
+You are an expert metro operations analyst.
+
+Compare AI generated plan vs planner finalized plan.
 
 Metrics:
-{json.dumps(data, indent=2)}
+{json.dumps(result, indent=2, default=str)}
+
+Write a professional summary.
 
 Explain:
 
-1. Main changes
-2. Improvement or tradeoff
-3. Human planner impact
-4. Fleet readiness impact
+1. Whether fleet risk increased or decreased
+2. Risk percentage change
+3. Run / standby / maintenance changes
+4. Whether overrides improved safety or availability
+5. Operational trade-offs
+6. Mention changed trains if important
+7. Final management recommendation
 
-Max 170 words.
+Use bullet points.
+Use clear numbers.
+Use attractive executive style.
+Max 220 words.
 """
 
-    return ask_llm(prompt) or fallback_compare(data)
+    return ask_llm(prompt) or "Comparison complete."

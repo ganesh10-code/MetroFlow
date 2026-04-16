@@ -27,29 +27,6 @@ def ist_today():
     return ist_now().date()
 
 
-def db_timestamp():
-    """
-    Store naive IST datetime into PostgreSQL TIMESTAMP
-    """
-    return datetime.now(IST).replace(tzinfo=None)
-
-
-def format_ist(dt):
-    """
-    Always display IST correctly
-    """
-    if not dt:
-        return None
-
-    if isinstance(dt, str):
-        return dt
-
-    if dt.tzinfo is None:
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-
-    return dt.astimezone(IST).strftime("%Y-%m-%d %H:%M:%S")
-
-
 # ==========================================================
 # ACCESS
 # ==========================================================
@@ -195,7 +172,7 @@ def submit_today(
     user=Depends(check_ocr_role)
 ):
     today = ist_today()
-    now = db_timestamp()
+    now = ist_now().strftime("%Y-%m-%d %H:%M:%S")
 
     lock = db.execute(text("""
         SELECT id
@@ -240,7 +217,7 @@ def submit_today(
             standby_count = EXCLUDED.standby_count,
             maintenance_count = EXCLUDED.maintenance_count,
             updated_by = EXCLUDED.updated_by,
-            updated_at = EXCLUDED.updated_at
+            updated_at = :updated_at
     """), {
         "log_date": today,
         "run_count": payload.run_count,
@@ -275,7 +252,7 @@ def submit_mileage(
         )
 
     today = ist_today()
-    now = db_timestamp()
+    now = ist_now().strftime("%Y-%m-%d %H:%M:%S")
 
     lock = db.execute(text("""
         SELECT id
@@ -314,7 +291,7 @@ def submit_mileage(
 
             DO UPDATE SET
                 mileage_today = EXCLUDED.mileage_today,
-                updated_at = EXCLUDED.updated_at
+                updated_at = :updated_at
         """), {
             "log_date": today,
             "train_id": row.train_id,

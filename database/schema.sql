@@ -103,6 +103,14 @@ CREATE TABLE IF NOT EXISTS plans (
     date DATE NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR
+    DEFAULT 'GENERATED'
+    CHECK (
+        status IN (
+            'GENERATED',
+            'FINALIZED'
+        )
+    ),
     total_trains INT,
     maintenance_count INT,
     standby_count INT,
@@ -141,7 +149,7 @@ UNIQUE (plan_id, train_id)
 CREATE TABLE IF NOT EXISTS plan_versions (
     id SERIAL PRIMARY KEY,
     version_type VARCHAR CHECK (
-        version_type IN ('GENERATED', 'FINALIZED')
+        version_type IN ('GENERATED', 'FINALIZED', 'SIMULATION')
     ),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     reference_plan_id INT,
@@ -290,8 +298,9 @@ CREATE TABLE audit_logs (
 -- =====================================================
 CREATE TABLE IF NOT EXISTS simulation_logs (
     id SERIAL PRIMARY KEY,
+    train_id VARCHAR,
     scenario_name VARCHAR,
     created_by VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    remarks TEXT
+    explanation TEXT
 );

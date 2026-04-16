@@ -26,14 +26,6 @@ def ist_now():
 def ist_today():
     return ist_now().date()
 
-
-def db_timestamp():
-    """
-    Store naive IST datetime in PostgreSQL TIMESTAMP
-    """
-    return datetime.now(IST).replace(tzinfo=None)
-
-
 # ==========================================================
 # ACCESS
 # ADMIN + FITNESS
@@ -142,7 +134,7 @@ def submit_today(
         )
 
     today = ist_today()
-    now = db_timestamp()
+    now = ist_now().strftime("%Y-%m-%d %H:%M:%S")
 
     lock = db.execute(text("""
         SELECT id
@@ -194,7 +186,7 @@ def submit_today(
 
             DO UPDATE SET
                 compliance_status = EXCLUDED.compliance_status,
-                updated_at = EXCLUDED.updated_at
+                updated_at = :updated_at
         """), {
             "log_date": today,
             "train_id": row.train_id,

@@ -47,7 +47,8 @@ def create_schema_if_needed():
             "cleaning_logs",
             "fitness_logs",
             "branding_logs",
-            "operations_control_room"
+            "operations_control_room",
+            "simulation_logs"
         ]
 
         missing = [t for t in required_tables if not table_exists(conn, t)]
@@ -104,22 +105,28 @@ def create_schema_if_needed():
             if "real_daily_features" in missing:
                 conn.execute(text("""
                     CREATE TABLE IF NOT EXISTS real_daily_features (
-                        id SERIAL PRIMARY KEY,
-                        date DATE,
-                        train_id VARCHAR,
-                        open_jobs INT,
-                        urgency_level VARCHAR,
-                        mileage_today FLOAT,
-                        days_since_clean INT,
-                        cleaning_required INT,
-                        compliance_status VARCHAR,
-                        branding_priority INT,
-                        penalty_risk_level VARCHAR,
-                        shunting_time INT,
-                        risk_label INT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    );
-                """))
+                    id SERIAL PRIMARY KEY,
+                    date DATE NOT NULL,
+                    train_id VARCHAR NOT NULL,
+                    open_jobs INT,
+                    urgency_level VARCHAR,
+                    mileage_today FLOAT,
+                    days_since_clean INT,
+                    cleaning_required INT,
+                    compliance_status VARCHAR,
+                    branding_priority INT,
+                    penalty_risk_level VARCHAR,
+
+                    shunting_time INT,
+
+                    risk_label INT,
+
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                    CONSTRAINT uq_real_daily_features
+                    UNIQUE (date, train_id)
+                ); """))
                 print("Created real_daily_features table")
 
             if "plans" in missing:
@@ -129,6 +136,14 @@ def create_schema_if_needed():
                         date DATE NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        status VARCHAR
+                        DEFAULT 'GENERATED'
+                        CHECK (
+                            status IN (
+                                'GENERATED',
+                                'FINALIZED',
+                            )
+                        ),
                         total_trains INT,
                         maintenance_count INT,
                         standby_count INT,
@@ -173,7 +188,7 @@ def create_schema_if_needed():
                         CREATE TABLE IF NOT EXISTS plan_versions (
                         id SERIAL PRIMARY KEY,
                         version_type VARCHAR CHECK (
-                        version_type IN ('GENERATED', 'FINALIZED')),
+                        version_type IN ('GENERATED', 'FINALIZED', 'SIMULATION')),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         reference_plan_id INT,
                         notes TEXT
@@ -184,10 +199,11 @@ def create_schema_if_needed():
                 conn.execute(text("""
                     CREATE TABLE IF NOT EXISTS simulation_logs (
                     id SERIAL PRIMARY KEY,
+                    train_id VARCHAR,
                     scenario_name VARCHAR,
                     created_by VARCHAR,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    remarks TEXT
+                    explanation TEXT
                 );  """))
                 print("Created simulation_logs table")   
                     
