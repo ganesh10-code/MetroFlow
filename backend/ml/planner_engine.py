@@ -16,6 +16,7 @@ if ROOT_DIR not in sys.path:
     sys.path.append(ROOT_DIR)
 
 from pipeline.real_feature_pipeline import generate_real_daily_features
+from pipeline.synthetic_feature_pipeline import load_synthetic_features
 
 
 engine = create_engine(DATABASE_URL)
@@ -187,6 +188,26 @@ def fetch_latest_planning_data():
             """), conn, params={
                 "today": today
             })
+        
+        load_synthetic_features
+
+        cnt = conn.execute(text("""
+        SELECT COUNT(*)
+        FROM synthetic_daily_features
+        WHERE date = :today
+        """), {
+        "today": today
+        }).scalar()
+
+        if cnt > 0:
+            return pd.read_sql(text("""
+            SELECT *
+            FROM synthetic_daily_features
+            WHERE date = :today
+            ORDER BY train_id
+            """), conn, params={
+            "today": today
+        })
 
     raise Exception("No planning data available")
 
