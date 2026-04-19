@@ -7,9 +7,11 @@ from pydantic import BaseModel
 from typing import List
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import json
 
 from app.core.database import get_db
 from app.api.auth import get_current_active_user
+from app.services.kafka_producer import send_event, build_department_event
 
 cleaning_router = APIRouter()
 
@@ -177,6 +179,40 @@ def submit_today(
         })
 
     db.commit()
+
+    # Persist dashboard event history directly for reliable analytics visibility.
+    try:
+        db.execute(text("""
+            INSERT INTO events_log (event_timestamp, event_type, department, train_id, payload, created_at)
+            VALUES (:event_timestamp, :event_type, :department, :train_id, CAST(:payload AS JSON), :created_at)
+        """), {
+            "event_timestamp": ist_now().replace(tzinfo=None),
+            "event_type": "department_submission",
+            "department": "cleaning",
+            "train_id": None,
+            "payload": json.dumps({
+                "records_count": len(payload),
+                "details": f"cleaning submitted {len(payload)} record(s)",
+                "user_id": user.id,
+            }),
+            "created_at": ist_now().replace(tzinfo=None),
+        })
+        db.commit()
+    except Exception as e:
+        print(f"⚠️ events_log insert failed (cleaning): {str(e)}")
+        db.rollback()
+
+    # 🔥 EMIT KAFKA EVENT (fire-and-forget)
+    send_event(
+        topic_key="department_events",
+        event_type="department_submission",
+        payload=build_department_event(
+            department="cleaning",
+            user_id=user.id,
+            records_count=len(payload),
+        ),
+        user_id=user.id,
+    )
 
     return {
         "message": "Today's cleaning data submitted successfully",
