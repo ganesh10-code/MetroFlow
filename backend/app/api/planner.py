@@ -8,6 +8,7 @@ import pandas as pd
 
 from app.core.database import get_db
 from app.api.auth import get_current_active_user
+from app.services.kafka_producer import send_event, build_planner_event, build_scenario_event
 
 from ml.planner_engine import (
     generate_temp_plan,
@@ -406,7 +407,7 @@ def generate_plan(
             (df["decision"] == "MAINTENANCE").sum()
         )
 
-        return {
+        response = {
             "details": rows,
             "counts": {
                 "run": run,
@@ -420,6 +421,21 @@ def generate_plan(
                     targets
             )
         }
+
+        # 🔥 EMIT KAFKA EVENT (fire-and-forget)
+        send_event(
+            topic_key="planner_events",
+            event_type="plan_generated",
+            payload=build_planner_event(
+                plan_id=0,  # Temporary ID (plan not yet persisted)
+                status="GENERATED",
+                counts=response["counts"],
+                additional_data={"has_ai_summary": True},
+            ),
+            user_id=user.id,
+        )
+
+        return response
 
     except HTTPException:
         raise
@@ -516,6 +532,23 @@ def what_if(
 
         db.commit()
 
+        # 🔥 EMIT KAFKA EVENT (fire-and-forget)
+        send_event(
+            topic_key="planner_events",
+            event_type="scenario_simulation",
+            payload=build_scenario_event(
+                scenario=scenario,
+                train_id=payload.train_id,
+                user_id=user.id,
+                additional_data={
+                    "run": run,
+                    "standby": standby,
+                    "maintenance": maint,
+                },
+            ),
+            user_id=user.id,
+        )
+
         return {
             "details": rows,
             "counts": {
@@ -565,7 +598,7 @@ def finalize_plan(
             plan_id
         )
 
-        return {
+        response = {
             "message":
                 "Plan finalized successfully",
             "plan_id": plan_id,
@@ -579,6 +612,23 @@ def finalize_plan(
                         }
                 )
         }
+
+        # 🔥 EMIT KAFKA EVENT (fire-and-forget)
+        send_event(
+            topic_key="planner_events",
+            event_type="plan_finalized",
+            payload=build_planner_event(
+                plan_id=plan_id,
+                status="FINALIZED",
+                additional_data={
+                    "finalized_by": user.username,
+                    "role": user.role,
+                },
+            ),
+            user_id=user.id,
+        )
+
+        return response
 
     except HTTPException:
         raise

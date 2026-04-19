@@ -18,6 +18,10 @@ from app.api.branding import branding_router
 from app.api.planner import planner_router
 from app.api.operational import operational_router
 from app.api.cleaning import cleaning_router
+from app.api.analytics import analytics_router
+from app.api.ai_insights import ai_router
+from app.api.admin_analytics import admin_analytics_router
+from app.services.kafka_consumer_store import start_event_consumer, stop_event_consumer, ensure_events_log_table
 
 # 🔥 Add project root (MetroFlow) to Python path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -35,6 +39,7 @@ from pipeline.synthetic_feature_pipeline import create_schema_if_needed, load_sy
 async def lifespan(app: FastAPI):
 
     print("🚀 MetroFlow Starting...")
+    consumer_started = False
 
     try:
         # ============================================================
@@ -129,7 +134,36 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"❌ Startup error: {e}")
 
+    # ============================================================
+    # ALWAYS ATTEMPT KAFKA CONSUMER START
+    # even if earlier startup tasks fail
+    # ============================================================
+    print("🧱 Ensuring events_log table...")
+    try:
+        ensure_events_log_table()
+    except Exception as e:
+        print(f"⚠️ events_log ensure warning: {e}")
+
+    print("🔌 Starting Kafka event consumer...")
+    try:
+        start_event_consumer()
+        consumer_started = True
+        print("✅ Kafka event consumer started")
+    except Exception as e:
+        print(f"⚠️ Kafka consumer startup warning: {e}")
+
     yield
+    
+    # ============================================================
+    # SHUTDOWN
+    # ============================================================
+    print("🛑 Shutting down...")
+    if consumer_started:
+        try:
+            stop_event_consumer()
+            print("✅ Kafka consumer stopped")
+        except Exception as e:
+            print(f"⚠️ Kafka consumer shutdown warning: {e}")
   
 
 
@@ -172,6 +206,9 @@ app.include_router(branding_router, prefix="/branding", tags=["branding"])
 app.include_router(planner_router, prefix="/planner", tags=["planner"])
 app.include_router(cleaning_router, prefix="/cleaning", tags=["cleaning"])
 app.include_router(operational_router,prefix="/operations",tags=["Operations Control Room"])
+app.include_router(analytics_router, tags=["analytics"])
+app.include_router(ai_router, tags=["ai"])
+app.include_router(admin_analytics_router, tags=["admin-analytics"])
 
 
 # ============================================================

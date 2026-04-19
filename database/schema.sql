@@ -170,7 +170,7 @@ CREATE TABLE synthetic_daily_features (
     branding_priority INT,
     penalty_risk_level VARCHAR,
     shunting_time INT,
-    risk_label INT
+    risk_label INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -278,7 +278,7 @@ CREATE TABLE IF NOT EXISTS mileage_logs (
     mileage_today FLOAT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (log_date, train_id),
+    UNIQUE (log_date, train_id)
 );
 
 CREATE TABLE audit_logs (
@@ -303,4 +303,20 @@ CREATE TABLE IF NOT EXISTS simulation_logs (
     created_by VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     explanation TEXT
+);
+
+-- =====================================================
+-- REAL-TIME KAFKA EVENTS LOG
+-- Stores all departmental events for live dashboard
+-- =====================================================
+CREATE TABLE IF NOT EXISTS events_log (
+    id SERIAL PRIMARY KEY,
+    event_timestamp TIMESTAMP NOT NULL,
+    event_type VARCHAR NOT NULL,
+    department VARCHAR NOT NULL,
+    train_id VARCHAR,
+    payload JSON,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_event_timestamp (event_timestamp DESC),
+    INDEX idx_department (department)
 );

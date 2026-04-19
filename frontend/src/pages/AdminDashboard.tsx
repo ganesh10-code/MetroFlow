@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Users, UserCheck, UserX, Plus, X, ChevronDown, Shield, Zap, Activity } from 'lucide-react';
+import { Users, UserCheck, UserX, Plus, X, ChevronDown, Shield, Zap, Activity, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../config/axios';
 import { StatCard } from '../components/ui/StatCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
+import AnalyticsDashboard from '../components/analytics/AnalyticsDashboard';
 
 interface User {
   id: number;
@@ -16,6 +17,7 @@ interface User {
 const ROLES = ['ADMIN', 'PLANNER', 'MAINTENANCE', 'FITNESS', 'BRANDING'];
 
 const AdminDashboard = () => {
+  const [activeTab, setActiveTab] = useState<'management' | 'analytics'>('management');
   const [users, setUsers] = useState<User[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ name: '', username: '', password: '', role: 'MAINTENANCE' });
@@ -23,9 +25,6 @@ const AdminDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  <div className="fixed top-4 right-4 z-50 bg-[#00F2FF] text-[#080B1F] px-4 py-2 rounded-xl font-bold shadow-lg">
-  🔵 TAILWIND IS WORKING! Electric Cyan = #00F2FF
-</div>
   useEffect(() => { fetchUsers(); }, []);
 
   const fetchUsers = async () => {
@@ -69,7 +68,55 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-8">
-      {/* Animated Header */}
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b border-[#00F2FF]/10">
+        <button
+          onClick={() => setActiveTab('management')}
+          className={`px-6 py-3 font-semibold transition-all ${
+            activeTab === 'management'
+              ? 'text-[#00F2FF] border-b-2 border-[#00F2FF]'
+              : 'text-[#7D7DBE] hover:text-[#B8BCE6]'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Shield size={18} />
+            User Management
+          </div>
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`px-6 py-3 font-semibold transition-all ${
+            activeTab === 'analytics'
+              ? 'text-[#00F2FF] border-b-2 border-[#00F2FF]'
+              : 'text-[#7D7DBE] hover:text-[#B8BCE6]'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <BarChart3 size={18} />
+            Kafka Real-Time Analytics
+          </div>
+        </button>
+      </div>
+
+      {/* Analytics Tab Content */}
+      {activeTab === 'analytics' && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <AnalyticsDashboard />
+        </motion.div>
+      )}
+
+      {/* User Management Tab Content */}
+      {activeTab === 'management' && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="space-y-8"
+        >
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -401,6 +448,8 @@ const AdminDashboard = () => {
           </>
         )}
       </AnimatePresence>
+        </motion.div>
+      )}
     </div>
   );
 };
