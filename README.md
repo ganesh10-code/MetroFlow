@@ -545,44 +545,6 @@ Built with ❤️ for Metro Operations & Fleet Management
 # ▶️ Run Instructions
 ## NOTE: Make sure PostgreSQL is running, and `.env` has your `DATABASE_URL` set.
 
-## Backend
-
-### Create Virtual Environment and activate
-```bash
-py -3.11 -m venv venv
-.\venv\Scripts\Activate.ps1
-```
-#### Note: only 3.10 or 3.11 is compatible for some python packages like numpy, pandas
-### Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### Generate daily operational data
-
-```bash
-python -m scripts.daily_data_generator
-```
-
-### Load data into PostgreSQL
-
-```bash
-python -m pipeline.feature_pipeline
-```
-
-### Train ML model
-
-```bash
-python -m ml.train_model
-```
-
-### Plan Generation
-
-```bash
-python -m ml.plan_engine.py
-```
-
 ### Start API server
 
 ```bash
