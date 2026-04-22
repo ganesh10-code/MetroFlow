@@ -11,13 +11,15 @@ MetroFlow is an integrated platform that combines:
 3. **Role-Based Operations Dashboard**: Multi-department interface for maintenance, fitness, cleaning, branding, and operations teams
 
 The system analyzes operational data from multiple departments and makes optimal decisions about which trainsets should:
+
 - **RUN** – Enter revenue service
-- **STANDBY** – Remain available as backup  
+- **STANDBY** – Remain available as backup
 - **MAINTENANCE** – Move to inspection or repair
 
 ## 🎯 Core Features
 
 ### 📊 Kafka Real-Time Streaming Analytics
+
 - **Live Event Stream**: Real-time Kafka event ingestion from all departments
 - **Department-wise Monitoring**: Separate analytics tracks for Maintenance, Fitness, Cleaning, Operations, and Branding
 - **Fleet Overview Dashboard**: Real-time KPI cards showing:
@@ -29,11 +31,13 @@ The system analyzes operational data from multiple departments and makes optimal
 - **Live Event Panel**: Detailed real-time event display with timestamps, record counts, and processing status
 
 ### 🤖 AI-Powered Insights
+
 - **Context-Aware GenAI Assistant**: Analytics-focused chatbot powered by GROQ/GEMINI LLMs
 - **Real-time Analytics Context**: Fresh fleet data aggregation on every query
 - **Natural Language Explanations**: Human-readable insights into operational patterns
 
 ### 🔧 Fleet Management
+
 - **Maintenance Tracking**: Work order backlog and compliance status
 - **Fitness Certification**: Train certificate validity and compliance monitoring
 - **Cleaning & Detailing**: Hygiene standards and schedule tracking
@@ -41,6 +45,7 @@ The system analyzes operational data from multiple departments and makes optimal
 - **Branding Compliance**: Brand contract priorities and commitments
 
 ### 🔐 Role-Based Access Control
+
 - **ADMIN**: Full system access and analytics
 - **OPERATIONS**: Operations control room dashboard
 - **PLANNER**: Train induction planning interface
@@ -125,15 +130,15 @@ Department Dashboards (Maintenance/Fitness/Cleaning/Operations)
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend** | React 18 + TypeScript + Tailwind CSS + Framer Motion |
-| **Backend** | FastAPI + SQLAlchemy ORM |
-| **Real-Time Streaming** | Apache Kafka + Python kafka-python |
-| **Database** | PostgreSQL + SQLAlchemy |
-| **ML/GenAI** | GROQ/GEMINI LLM APIs + Scikit-learn (placeholder) |
-| **Bundler** | Vite |
-| **Build/Orchestration** | Docker + Docker Compose |
+| Layer                   | Technology                                           |
+| ----------------------- | ---------------------------------------------------- |
+| **Frontend**            | React 18 + TypeScript + Tailwind CSS + Framer Motion |
+| **Backend**             | FastAPI + SQLAlchemy ORM                             |
+| **Real-Time Streaming** | Apache Kafka + Python kafka-python                   |
+| **Database**            | PostgreSQL + SQLAlchemy                              |
+| **ML/GenAI**            | GROQ/GEMINI LLM APIs + Scikit-learn (placeholder)    |
+| **Bundler**             | Vite                                                 |
+| **Build/Orchestration** | Docker + Docker Compose                              |
 
 ---
 
@@ -201,6 +206,7 @@ MetroFlow/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Python 3.9+
 - Node.js 16+
 - PostgreSQL 12+
@@ -223,9 +229,6 @@ pip install -r requirements.txt
 # Set environment variables
 cp .env.example .env  # Edit with your configuration
 
-# Run migrations
-python -m app.core.database
-
 # Start backend server
 uvicorn app.main:app --reload
 ```
@@ -247,7 +250,17 @@ npm run dev
 
 **Frontend runs on**: `http://localhost:5173`
 
-### Kafka Setup
+or else you can start both backend, frontend services at once
+
+### Run both frontend and backend
+
+from Root folder, run:
+
+```bash
+npm run dev
+```
+
+### Kafka Setup (Important)
 
 Start Kafka using Docker Compose:
 
@@ -255,32 +268,39 @@ Start Kafka using Docker Compose:
 docker-compose up -d
 ```
 
-Or follow [KAFKA_SETUP.md](KAFKA_SETUP.md) for manual setup.
+Or
+
+follow [KAFKA_SETUP.md](KAFKA_SETUP.md) for manual setup.
 
 ---
 
 ## 📊 Analytics Dashboard Walkthrough
 
 ### 1. Fleet Overview Section
+
 Shows 4 key metrics:
+
 - **Total Trains**: Complete fleet inventory from master database
 - **Running Trains**: Current active trains (from Operations Control Room)
 - **Maintenance Backlog**: Pending work orders (from Kafka events)
 - **High Risk**: Non-compliant trains requiring attention (from Kafka events)
 
 ### 2. AI-Powered Insights (Chat Panel)
+
 - Ask questions about fleet status
 - Receives context-fresh analytics data on every query
 - LLM provides natural language insights
 - Powered by GROQ/GEMINI
 
 ### 3. Department Trends (7-Day History)
+
 - **Maintenance Department**: Pending work orders trend
 - **Fitness Certification**: Non-compliant trains trend
 - **Cleaning & Detailing**: Pending cleaning tasks trend
 - **System Risk Assessment**: Overall operational health index
 
 ### 4. Live Events Stream (Kafka)
+
 - **Real-time event display** with color-coded departments
 - **Full event details**: Timestamp, train ID, record count, user ID
 - **Event sequence tracking**: See events in order they occurred
@@ -288,6 +308,7 @@ Shows 4 key metrics:
 - **Auto-refresh**: Updates every 10 seconds (configurable)
 
 ### 5. High-Risk Trains
+
 - Detailed list of trains requiring immediate attention
 - Urgency level and penalty risk indicators
 - Compliance status and maintenance info
@@ -298,13 +319,13 @@ Shows 4 key metrics:
 
 ### Analytics Endpoints (Require ADMIN/OPERATIONS/PLANNER role)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/admin/analytics/summary` | Fleet overview metrics |
-| GET | `/admin/analytics/trends` | 7-day trend data for all departments |
-| GET | `/admin/analytics/kafka-live` | Recent Kafka events from last 24 hours |
-| POST | `/admin/analytics/chat` | AI-powered analytics chat |
-| GET | `/admin/analytics/risks/high-risk-trains` | List of high-risk trains |
+| Method | Endpoint                                  | Description                            |
+| ------ | ----------------------------------------- | -------------------------------------- |
+| GET    | `/admin/analytics/summary`                | Fleet overview metrics                 |
+| GET    | `/admin/analytics/trends`                 | 7-day trend data for all departments   |
+| GET    | `/admin/analytics/kafka-live`             | Recent Kafka events from last 24 hours |
+| POST   | `/admin/analytics/chat`                   | AI-powered analytics chat              |
+| GET    | `/admin/analytics/risks/high-risk-trains` | List of high-risk trains               |
 
 ### Response Example: `/admin/analytics/summary`
 
@@ -327,12 +348,14 @@ Shows 4 key metrics:
 ## 🎨 UI/UX Features
 
 ### Real-Time Indicators
+
 - 🟢 **Live Data** indicator when Kafka events are active
 - 🔴 **Kafka Stream** indicator showing event count
 - ⏳ Loading states for all data sections
 - ⚠️ Error messages with graceful fallbacks
 
 ### Premium Design
+
 - Dark theme with cyan/green/orange/purple/red color coding
 - Gradient borders for visual hierarchy
 - Smooth animations with Framer Motion
@@ -340,6 +363,7 @@ Shows 4 key metrics:
 - Hover effects and interactive feedback
 
 ### Data Visualization
+
 - Bar charts with sparkline trends
 - Color-coded department sections
 - Status indicators and badges
@@ -365,7 +389,8 @@ Events published to Kafka topics follow this structure:
 }
 ```
 
-**Topics**: 
+**Topics**:
+
 - `maintenance-events`
 - `fitness-events`
 - `cleaning-events`
@@ -377,6 +402,7 @@ Events published to Kafka topics follow this structure:
 ## 🗄️ Database Schema
 
 ### Key Tables
+
 - `master_train_data`: Fleet inventory
 - `operations_control_room`: Daily operations status
 - `maintenance_logs`: Maintenance work orders
@@ -393,6 +419,7 @@ See [database/schema.sql](database/schema.sql) for complete schema.
 ## 🔐 Authentication & Authorization
 
 ### User Roles
+
 - **ADMIN**: Full system access, user management, analytics
 - **OPERATIONS**: Operations dashboard, operations control room
 - **PLANNER**: Train induction planning interface
@@ -402,7 +429,9 @@ See [database/schema.sql](database/schema.sql) for complete schema.
 - **BRANDING**: Branding compliance dashboard
 
 ### Protected Endpoints
+
 All analytics and sensitive endpoints require:
+
 - Valid JWT token in Authorization header
 - Appropriate role-based permissions
 
@@ -413,6 +442,7 @@ All analytics and sensitive endpoints require:
 For detailed explanation of where each metric comes from, see [ANALYTICS_DATA_SOURCES.md](ANALYTICS_DATA_SOURCES.md)
 
 **Summary**:
+
 - **Total Trains**: Static inventory (database)
 - **Running Trains**: Operations Control Room (daily submission)
 - **Maintenance**: Kafka events (real-time, on-demand)
@@ -424,6 +454,7 @@ For detailed explanation of where each metric comes from, see [ANALYTICS_DATA_SO
 ## 🚧 Error Handling
 
 The system implements graceful error handling:
+
 - Missing tables return 0 instead of 500 errors
 - Failed queries return empty arrays with warning logs
 - All API responses are validated before returning
@@ -461,12 +492,14 @@ TZ=Asia/Kolkata
 ## 🤝 Contributing
 
 ### Adding a New Department Dashboard
+
 1. Create new component in `frontend/src/pages/[DepartmentName]Dashboard.tsx`
 2. Add role-based route in router
 3. Create Kafka topic: `[department]-events`
 4. Update API endpoints as needed
 
 ### Adding Analytics Features
+
 1. Add SQL queries to `backend/app/api/admin_analytics.py`
 2. Create frontend components in `frontend/src/components/analytics/`
 3. Update types and interfaces
@@ -487,18 +520,21 @@ TZ=Asia/Kolkata
 ## 🐛 Troubleshooting
 
 ### "500 Error" on Analytics Endpoints
+
 - Check if database tables exist
 - Verify database connection in `.env`
 - Check backend logs for detailed error messages
 - Ensure all migrations have run
 
 ### "No Live Data" in Dashboard
+
 - Verify Kafka broker is running: `localhost:9092`
 - Check Kafka consumer logs for errors
 - Ensure department teams are publishing events
 - Check if events_log table exists in database
 
 ### Frontend won't start
+
 - Delete `node_modules` and reinstall: `npm install`
 - Clear Vite cache: `rm -rf .vite`
 - Check Node.js version: `node --version` (should be 16+)
@@ -543,6 +579,7 @@ Built with ❤️ for Metro Operations & Fleet Management
 **System Status**: ✅ Production Ready (Phase 1 Complete)
 
 # ▶️ Run Instructions
+
 ## NOTE: Make sure PostgreSQL is running, and `.env` has your `DATABASE_URL` set.
 
 ### Start API server
@@ -551,11 +588,14 @@ Built with ❤️ for Metro Operations & Fleet Management
 cd backend
 uvicorn app.api:app --reload
 ```
+
 Open API documentation:
 http://127.0.0.1:8000/docs
 
 ## Frontend
+
 ### Run Frontend
+
 Start the React + Vite frontend (from the `frontend` directory):
 
 ```bash

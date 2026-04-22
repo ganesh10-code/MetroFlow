@@ -185,14 +185,34 @@ def train_model():
     y = data["risk_label"]
 
     # -------------------------
-    # Train/Test Split
+    # Train/Test Split (safe)
     # -------------------------
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y,
-        test_size=0.2,
-        random_state=42,
-        stratify=y   # 🔥 important for imbalance
-    )
+    class_counts = y.value_counts()
+
+    print("📊 Class Distribution:")
+    print(class_counts.to_dict())
+
+    # If any class has <2 rows, disable stratify
+    if class_counts.min() < 2:
+        print("⚠️ Rare class detected → using normal split")
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=0.2,
+            random_state=42
+        )
+
+    else:
+        print("✅ Using stratified split")
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X,
+            y,
+            test_size=0.2,
+            random_state=42,
+            stratify=y
+        )
 
     # -------------------------
     # Model (regularized)

@@ -35,6 +35,8 @@ from scripts.daily_data_generator import generate_daily_data
 from pipeline.synthetic_feature_pipeline import create_schema_if_needed, load_synthetic_features, load_data
 
 
+sys.stdout.reconfigure(encoding='utf-8')
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
