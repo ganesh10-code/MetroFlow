@@ -479,13 +479,24 @@ def what_if(
                 status_code=400,
                 detail="Invalid scenario"
             )
+        
+        # ---------------------------------
+        # REQUIRE TRAIN ID FROM FRONTEND
+        # ---------------------------------
+        train_id = str(payload.train_id or "").strip()
+
+        if not train_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Train ID is required"
+            )
 
         # ---------------------------------
         # RUN SIMULATION
         # ---------------------------------
         df = generate_temp_plan({
             "scenario": scenario,
-            "train_id": payload.train_id
+            "train_id": train_id
         })
 
         rows = df.to_dict(orient="records")
@@ -494,15 +505,19 @@ def what_if(
         standby = int((df["decision"] == "STANDBY").sum())
         maint = int((df["decision"] == "MAINTENANCE").sum())
 
-        simulation_explanation = generate_simulation_explanation(
-            rows,
-            scenario,
-            {
-                 "selected_train": payload.train_id,
-                "requested_by": user.username,
-                "time": now
-            }
-        )
+        try:
+            simulation_explanation = generate_simulation_explanation(
+                rows,
+                scenario,
+                {
+                    "selected_train": train_id,
+                    "requested_by": user.username,
+                    "time": now
+                }
+            )
+        except Exception as e:
+            print("AI ERROR:", str(e))
+            simulation_explanation = f"Scenario {scenario} simulated successfully."
 
                 # ---------------------------------
         # STORE SIMULATION LOG
@@ -523,7 +538,7 @@ def what_if(
                 :explanation
             )
         """), {
-            "t_id": f"Train: {payload.train_id or 'ALL'}",
+            "t_id": f"Train: {train_id or 'ALL'}",
             "scenario": scenario,
             "user": user.username,
             "now": now,
@@ -538,8 +553,7 @@ def what_if(
             event_type="scenario_simulation",
             payload=build_scenario_event(
                 scenario=scenario,
-                train_id=payload.train_id,
-                user_id=user.id,
+                train_id=train_id,
                 additional_data={
                     "run": run,
                     "standby": standby,
@@ -564,6 +578,7 @@ def what_if(
         raise
 
     except Exception as e:
+        print("WHAT IF ERROR:", repr(e))
         raise HTTPException(
             status_code=500,
             detail=f"Simulation failed: {str(e)}"

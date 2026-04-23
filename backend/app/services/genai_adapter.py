@@ -33,7 +33,7 @@ def ask_gemini(prompt):
         genai.configure(api_key=GEMINI_KEY)
 
         model = genai.GenerativeModel(
-            "gemini-2.0-flash"
+            "gemini-1.5-flash"
         )
 
         res = model.generate_content(prompt)
@@ -59,7 +59,7 @@ def ask_groq(prompt):
     try:
         from groq import Groq
 
-        client = Groq(api_key=GROQ_KEY)
+        client = Groq(api_key=GROQ_KEY, timeout=10)
 
         res = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -95,17 +95,19 @@ def ask_groq(prompt):
 # ==========================================================
 def ask_llm(prompt):
 
-    if GEMINI_KEY:
-        ans = ask_gemini(prompt)
-        if ans:
-            return ans
-
+    # Prefer Groq first (more stable free tier)
     if GROQ_KEY:
         ans = ask_groq(prompt)
         if ans:
             return ans
 
-    return None
+    # Fallback to Gemini
+    if GEMINI_KEY:
+        ans = ask_gemini(prompt)
+        if ans:
+            return ans
+
+    return "AI summary unavailable."
 
 
 # ==========================================================
@@ -115,58 +117,61 @@ def get_counts(rows):
 
     run = len([
         x for x in rows
-        if x["decision"] == "RUN"
+        if x.get("decision") == "RUN"
     ])
 
     standby = len([
         x for x in rows
-        if x["decision"] == "STANDBY"
+        if x.get("decision") == "STANDBY"
     ])
 
     maint = len([
         x for x in rows
-        if x["decision"] == "MAINTENANCE"
+        if x.get("decision") == "MAINTENANCE"
     ])
 
+    risk_vals = []
+    priority_vals = []
+
+    for x in rows:
+        try:
+            v = x.get("risk_score", 0)
+            risk_vals.append(float(v or 0))
+        except:
+            risk_vals.append(0)
+
+        try:
+            v = x.get("priority_score", 0)
+            priority_vals.append(float(v or 0))
+        except:
+            priority_vals.append(0)
+
     avg_risk = round(
-        sum(
-            float(x["risk_score"])
-            for x in rows
-        ) / max(len(rows), 1),
-        2
+        sum(risk_vals) / max(len(rows), 1), 2
     )
 
     avg_priority = round(
-        sum(
-            float(x["priority_score"])
-            for x in rows
-        ) / max(len(rows), 1),
-        2
+        sum(priority_vals) / max(len(rows), 1), 2
     )
 
     open_jobs = sum(
-        int(x.get("open_jobs", 0))
+        int(x.get("open_jobs", 0) or 0)
         for x in rows
     )
 
     clean_pending = sum(
-        int(x.get("cleaning_required", 0))
+        int(x.get("cleaning_required", 0) or 0)
         for x in rows
     )
 
     fit_failures = sum(
         1 for x in rows
-        if x.get("compliance_status") != "FIT"
+        if str(x.get("compliance_status", "")).upper() != "FIT"
     )
 
     branding_high = sum(
         1 for x in rows
-        if int(
-            x.get(
-                "branding_priority",
-                0
-            )
-        ) >= 2
+        if int(x.get("branding_priority", 0) or 0) >= 2
     )
 
     return {

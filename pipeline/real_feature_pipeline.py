@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine, text
 import os
-from datetime import datetime
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 
 from backend.ml.config import DATABASE_URL
@@ -283,12 +283,20 @@ def generate_real_daily_features():
             last_clean_date = clean[0]
             cleaning_done = clean[1]
 
-            days_since_clean = (today - last_clean_date).days
+            # Normalize database date value
+            if isinstance(last_clean_date, datetime):
+                last_clean_date = last_clean_date.date()
 
-            cleaning_required = (
-                0 if cleaning_done else
-                1 if days_since_clean >= 5 else 0
-            )
+            elif isinstance(last_clean_date, str):
+                last_clean_date = datetime.fromisoformat(last_clean_date).date()
+
+            elif not isinstance(last_clean_date, date):
+                raise ValueError(f"Invalid cleaning log date: {last_clean_date}")   
+
+            days_since_clean = (today - last_clean_date).days
+            cleaning_done = bool(cleaning_done)
+
+            cleaning_required = 0 if cleaning_done else int(days_since_clean >= 5)
 
             # -------------------------------------------------
             # FITNESS
