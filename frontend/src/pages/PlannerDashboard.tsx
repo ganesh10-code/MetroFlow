@@ -351,8 +351,7 @@ export default function PlannerDashboard() {
       {/* GENERATE */}
       <Section title="Generate Plan">
         <p className="text-slate-400 mb-4">
-          Plan is generated using daily data from all department log tables and
-          used synthetic data incase of missing daily data. The AI model
+          Plan is generated using daily data from all departments . The AI model
           considers various factors to assign a decision (RUN / STANDBY /
           MAINTENANCE) to each train, along with risk and priority scores.
         </p>
