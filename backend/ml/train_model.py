@@ -1,16 +1,19 @@
 import pandas as pd
 import joblib
 import os
+import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report, roc_curve, auc
 from datetime import datetime
 from sqlalchemy import create_engine, text
 from ml.config import DATABASE_URL
 
 engine = create_engine(DATABASE_URL)
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def should_retrain():
     """
@@ -237,9 +240,123 @@ def train_model():
     print(f"📊 Accuracy: {acc:.4f}")
 
     # -------------------------
+    # Classification Report
+    # -------------------------
+    print("\n📄 Classification Report:\n")
+
+    # =========================================================
+    # DYNAMIC LABEL HANDLING
+    # =========================================================
+    labels_present = sorted(y.unique())
+
+    label_names = {
+        0: "SAFE",
+        1: "HIGH RISK",
+        2: "CLASS 2",
+        3: "CLASS 3"
+    }
+
+    target_names = [
+        label_names.get(label, f"CLASS {label}")
+        for label in labels_present
+    ]
+
+    print(
+        classification_report(
+            y_test,
+            y_pred,
+            labels=labels_present,
+            target_names=target_names
+        )
+    )
+    # =========================================================
+    # CREATE REPORTS DIRECTORY
+    # =========================================================
+    reports_dir = os.path.join(BASE_DIR, "trained_models", "reports")
+
+    os.makedirs(reports_dir, exist_ok=True)
+
+    # =========================================================
+    # 1. CONFUSION MATRIX
+    # =========================================================
+    cm = confusion_matrix(y_test, y_pred)
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    disp = ConfusionMatrixDisplay(
+        confusion_matrix=cm,
+        display_labels=target_names
+    )
+
+    disp.plot(
+        cmap="Blues",
+        ax=ax,
+        colorbar=False
+    )
+
+    plt.title("MetroFlow Confusion Matrix")
+
+    confusion_path = os.path.join(
+        reports_dir,
+        "confusion_matrix.png"
+    )
+
+    plt.savefig(
+        confusion_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    print(f"🖼️ Confusion matrix saved → {confusion_path}")
+
+    # =========================================================
+    # 2. FEATURE IMPORTANCE
+    # =========================================================
+    feature_importance = pd.DataFrame({
+        "Feature": X.columns,
+        "Importance": model.feature_importances_
+    })
+
+    feature_importance = feature_importance.sort_values(
+        by="Importance",
+        ascending=True
+    )
+
+    plt.figure(figsize=(8, 5))
+
+    plt.barh(
+        feature_importance["Feature"],
+        feature_importance["Importance"]
+    )
+
+    plt.xlabel("Importance Score")
+
+    plt.ylabel("Features")
+
+    plt.title("MetroFlow Feature Importance")
+
+    feature_path = os.path.join(
+        reports_dir,
+        "feature_importance.png"
+    )
+
+    plt.savefig(
+        feature_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    print(f"🖼️ Feature importance saved → {feature_path}")
+
+
+    # -------------------------
     # Save Model
     # -------------------------
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+   
     model_path = os.path.join(BASE_DIR, "trained_models", "risk_model.pkl")
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
